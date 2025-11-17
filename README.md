@@ -18,14 +18,20 @@ Real-time collaborative design tool built with vanilla JavaScript, HTML5 Canvas,
 - **Style Editor**: Stroke width, fill, and stroke colors
 
 ### Advanced Features
-- **Real-time Collaboration**: Connect with peers using PeerJS - no server required
+- **Real-time Collaboration**: URL-based sharing with QR codes - just share the link!
 - **Undo/Redo**: Full history system (50 actions)
+- **Copy/Paste/Duplicate**: Ctrl+C/V/D for quick shape duplication
+- **Opacity Control**: 0-100% transparency with visual slider
+- **Corner Radius**: Rounded rectangles with precise control
 - **Zoom & Pan**: Smooth canvas navigation with zoom to fit
 - **Export**: PNG, SVG, and JSON format support
 - **Keyboard Shortcuts**: Professional shortcuts for all tools
 - **Dark Mode UI**: Beautiful modern interface with glassmorphism effects
 
 ### Collaboration
+- **One-Click Sharing**: Share button generates instant collaboration links
+- **QR Code Sharing**: Mobile-friendly QR codes for easy joining
+- **Auto-Connect**: Just click a shared link to join instantly
 - **P2P Architecture**: Direct peer-to-peer connections using WebRTC
 - **Live Cursors**: See collaborators' cursors in real-time
 - **Shape Sync**: Automatic synchronization of all design changes
@@ -54,6 +60,10 @@ Visit: `https://hwkim3330.github.io/figma/`
 | `P` | Pen tool |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` | Redo |
+| `Ctrl+C` | Copy selected shape |
+| `Ctrl+V` | Paste from clipboard |
+| `Ctrl+D` | Duplicate selected shape |
+| `Ctrl+A` | Select all |
 | `Delete` | Delete selected shape |
 | `+` | Zoom in |
 | `-` | Zoom out |
@@ -61,10 +71,23 @@ Visit: `https://hwkim3330.github.io/figma/`
 
 ## How to Collaborate
 
-1. **Get your Peer ID** - It's displayed in the toolbar when you open the app
-2. **Share it** with your collaborator
-3. **They enter your ID** in the connection input and click "Connect"
-4. **Start designing together** - all changes sync in real-time!
+### Method 1: Share Link (Easiest!)
+1. Click the **Share** button in the toolbar
+2. Click **Copy Link** to copy the share URL
+3. Send the link to your collaborator
+4. They click the link and join instantly!
+
+### Method 2: QR Code (Mobile-Friendly)
+1. Click the **Share** button
+2. Show the QR code to your collaborator
+3. They scan it with their phone
+4. Instant collaboration!
+
+### Method 3: Manual Peer ID
+1. Get your Peer ID from the toolbar
+2. Share it with your collaborator
+3. They enter it and click Connect
+4. Start designing together!
 
 ## Technology Stack
 
