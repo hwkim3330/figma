@@ -17,6 +17,13 @@ export class Collaboration {
                     this.myId = id;
                     this.enabled = true;
                     console.log('My peer ID:', id);
+
+                    // Update URL with my peer ID
+                    this.updateURL();
+
+                    // Auto-connect if peer ID in URL
+                    this.autoConnectFromURL();
+
                     resolve(id);
                 });
 
@@ -32,6 +39,42 @@ export class Collaboration {
                 reject(err);
             }
         });
+    }
+
+    updateURL() {
+        if (!this.myId) return;
+        const url = new URL(window.location);
+        url.searchParams.set('id', this.myId);
+        window.history.replaceState({}, '', url);
+    }
+
+    autoConnectFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const connectTo = params.get('connect');
+
+        if (connectTo && connectTo !== this.myId) {
+            console.log('Auto-connecting to peer from URL:', connectTo);
+            setTimeout(() => {
+                this.connectToPeer(connectTo);
+            }, 1000);
+        }
+    }
+
+    getShareURL() {
+        if (!this.myId) return null;
+        const url = new URL(window.location.href);
+        url.searchParams.set('connect', this.myId);
+        return url.toString();
+    }
+
+    async generateQRCode(url) {
+        // Using QRCode.js library
+        const qr = new QRious({
+            value: url,
+            size: 256,
+            level: 'H'
+        });
+        return qr.toDataURL();
     }
 
     connectToPeer(peerId) {

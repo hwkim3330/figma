@@ -38,6 +38,7 @@ class DesignApp {
         this.setupCanvas();
         this.setupProperties();
         this.setupKeyboardShortcuts();
+        this.setupShare();
         this.setupExport();
 
         // Initialize collaboration
@@ -262,6 +263,107 @@ class DesignApp {
                 this.updateProperties(null);
             }
         });
+    }
+
+    setupShare() {
+        const shareBtn = document.getElementById('share-btn');
+        const shareModal = document.getElementById('share-modal');
+        const closeBtn = document.getElementById('close-share-modal');
+
+        shareBtn.addEventListener('click', () => {
+            this.openShareModal();
+        });
+
+        closeBtn.addEventListener('click', () => {
+            shareModal.classList.remove('active');
+        });
+
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) {
+                shareModal.classList.remove('active');
+            }
+        });
+
+        // Copy ID button
+        document.getElementById('copy-id-btn').addEventListener('click', async () => {
+            const id = this.collaboration.myId;
+            if (id) {
+                try {
+                    await navigator.clipboard.writeText(id);
+                    this.showCopyFeedback('copy-id-btn');
+                } catch (err) {
+                    console.error('Failed to copy ID:', err);
+                }
+            }
+        });
+
+        // Copy URL button
+        document.getElementById('copy-url-btn').addEventListener('click', async () => {
+            const url = this.collaboration.getShareURL();
+            if (url) {
+                try {
+                    await navigator.clipboard.writeText(url);
+                    this.showCopyFeedback('copy-url-btn');
+                } catch (err) {
+                    console.error('Failed to copy URL:', err);
+                }
+            }
+        });
+
+        // Download QR code button
+        document.getElementById('download-qr-btn').addEventListener('click', () => {
+            const canvas = document.getElementById('qr-canvas');
+            const url = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `designflow-qr-${Date.now()}.png`;
+            link.href = url;
+            link.click();
+        });
+    }
+
+    openShareModal() {
+        const modal = document.getElementById('share-modal');
+        const myId = this.collaboration.myId;
+        const shareURL = this.collaboration.getShareURL();
+
+        if (!myId) {
+            alert('Collaboration not initialized yet. Please wait...');
+            return;
+        }
+
+        // Update ID display
+        document.getElementById('my-id-display').value = myId;
+        document.getElementById('share-url-display').value = shareURL;
+
+        // Generate QR code
+        const canvas = document.getElementById('qr-canvas');
+        const qr = new QRious({
+            element: canvas,
+            value: shareURL,
+            size: 256,
+            level: 'H',
+            background: 'white',
+            foreground: 'black'
+        });
+
+        modal.classList.add('active');
+    }
+
+    showCopyFeedback(buttonId) {
+        const btn = document.getElementById(buttonId);
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Copied!
+        `;
+        btn.style.background = 'var(--accent-green)';
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+        }, 2000);
     }
 
     setupExport() {

@@ -6,6 +6,7 @@
     <title>DesignFlow - Collaborative Design Tool</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/qrious@4.0.2/dist/qrious.min.js"></script>
 </head>
 <body>
     <!-- Top Toolbar -->
@@ -86,8 +87,16 @@
         </div>
         <div class="toolbar-right">
             <div class="collab-section">
-                <input type="text" id="peer-id-input" placeholder="Enter Peer ID to connect" />
-                <button class="btn-primary" id="connect-btn">Connect</button>
+                <button class="btn-primary" id="share-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"/>
+                        <circle cx="6" cy="12" r="3"/>
+                        <circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                    Share
+                </button>
                 <div class="peer-info">
                     <span id="my-peer-id"></span>
                     <div id="connected-peers"></div>
@@ -184,6 +193,52 @@
                         <option value="Verdana">Verdana</option>
                         <option value="Georgia">Georgia</option>
                     </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal" id="share-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Share Design</h2>
+                <button class="close-btn" id="close-share-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-section">
+                    <label>Your Peer ID</label>
+                    <div class="copy-input-group">
+                        <input type="text" id="my-id-display" readonly />
+                        <button class="btn-copy" id="copy-id-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            </svg>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="share-section">
+                    <label>Share Link</label>
+                    <div class="copy-input-group">
+                        <input type="text" id="share-url-display" readonly />
+                        <button class="btn-copy" id="copy-url-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            </svg>
+                            Copy Link
+                        </button>
+                    </div>
+                    <p class="share-hint">Anyone with this link can join your design session</p>
+                </div>
+                <div class="share-section">
+                    <label>QR Code</label>
+                    <div class="qr-container">
+                        <canvas id="qr-canvas"></canvas>
+                    </div>
+                    <button class="btn-secondary" id="download-qr-btn">Download QR Code</button>
                 </div>
             </div>
         </div>
