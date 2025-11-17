@@ -250,6 +250,8 @@ export class Shape {
         this.fillColor = properties.fillColor || '#3b82f6';
         this.strokeColor = properties.strokeColor || '#000000';
         this.strokeWidth = properties.strokeWidth || 2;
+        this.opacity = properties.opacity !== undefined ? properties.opacity : 1;
+        this.cornerRadius = properties.cornerRadius || 0;
         this.visible = properties.visible !== undefined ? properties.visible : true;
     }
 
@@ -257,6 +259,7 @@ export class Shape {
         if (!this.visible) return;
 
         ctx.save();
+        ctx.globalAlpha = this.opacity;
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation * Math.PI / 180);
 
@@ -289,6 +292,8 @@ export class Shape {
             fillColor: this.fillColor,
             strokeColor: this.strokeColor,
             strokeWidth: this.strokeWidth,
+            opacity: this.opacity,
+            cornerRadius: this.cornerRadius,
             visible: this.visible
         };
     }
@@ -326,9 +331,33 @@ export class Rectangle extends Shape {
         ctx.strokeStyle = this.strokeColor;
         ctx.lineWidth = this.strokeWidth;
 
-        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-        if (this.strokeWidth > 0) {
-            ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+        const x = -this.width / 2;
+        const y = -this.height / 2;
+        const r = Math.min(this.cornerRadius, this.width / 2, this.height / 2);
+
+        if (r > 0) {
+            // Draw rounded rectangle
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + this.width - r, y);
+            ctx.arcTo(x + this.width, y, x + this.width, y + r, r);
+            ctx.lineTo(x + this.width, y + this.height - r);
+            ctx.arcTo(x + this.width, y + this.height, x + this.width - r, y + this.height, r);
+            ctx.lineTo(x + r, y + this.height);
+            ctx.arcTo(x, y + this.height, x, y + this.height - r, r);
+            ctx.lineTo(x, y + r);
+            ctx.arcTo(x, y, x + r, y, r);
+            ctx.closePath();
+            ctx.fill();
+            if (this.strokeWidth > 0) {
+                ctx.stroke();
+            }
+        } else {
+            // Draw regular rectangle
+            ctx.fillRect(x, y, this.width, this.height);
+            if (this.strokeWidth > 0) {
+                ctx.strokeRect(x, y, this.width, this.height);
+            }
         }
     }
 

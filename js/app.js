@@ -30,6 +30,8 @@ class DesignApp {
         this.strokeColor = '#000000';
         this.strokeWidth = 2;
 
+        this.clipboard = null;
+
         this.init();
     }
 
@@ -183,6 +185,20 @@ class DesignApp {
             this.updateSelectedShapeProperty('rotation', rotation);
         });
 
+        // Opacity
+        document.getElementById('opacity').addEventListener('input', (e) => {
+            const opacity = parseInt(e.target.value) / 100;
+            document.getElementById('opacity-value').textContent = parseInt(e.target.value) + '%';
+            this.updateSelectedShapeProperty('opacity', opacity);
+        });
+
+        // Corner Radius
+        document.getElementById('corner-radius').addEventListener('input', (e) => {
+            const cornerRadius = parseInt(e.target.value);
+            document.getElementById('corner-radius-value').textContent = cornerRadius + 'px';
+            this.updateSelectedShapeProperty('cornerRadius', cornerRadius);
+        });
+
         // Text properties
         document.getElementById('font-size').addEventListener('input', (e) => {
             const fontSize = parseInt(e.target.value);
@@ -205,6 +221,18 @@ class DesignApp {
                 } else if (e.key === 'y') {
                     e.preventDefault();
                     this.redo();
+                } else if (e.key === 'c') {
+                    e.preventDefault();
+                    this.copySelected();
+                } else if (e.key === 'v') {
+                    e.preventDefault();
+                    this.paste();
+                } else if (e.key === 'd') {
+                    e.preventDefault();
+                    this.duplicate();
+                } else if (e.key === 'a') {
+                    e.preventDefault();
+                    this.selectAll();
                 }
             }
 
@@ -644,6 +672,12 @@ class DesignApp {
         document.getElementById('rotation').value = shape.rotation;
         document.getElementById('rotation-value').textContent = shape.rotation + '°';
 
+        // Update opacity and corner radius
+        document.getElementById('opacity').value = Math.round(shape.opacity * 100);
+        document.getElementById('opacity-value').textContent = Math.round(shape.opacity * 100) + '%';
+        document.getElementById('corner-radius').value = shape.cornerRadius || 0;
+        document.getElementById('corner-radius-value').textContent = (shape.cornerRadius || 0) + 'px';
+
         // Update text inputs
         if (shape.type === 'text') {
             textGroup.style.display = 'block';
@@ -735,6 +769,65 @@ class DesignApp {
             this.updateProperties(this.engine.selectedShape);
         }
         this.updateUndoRedoButtons();
+    }
+
+    copySelected() {
+        if (this.engine.selectedShape) {
+            this.clipboard = this.engine.selectedShape.toJSON();
+            console.log('Copied shape to clipboard');
+        }
+    }
+
+    paste() {
+        if (this.clipboard) {
+            const ShapeClass = this.getShapeClass(this.clipboard.type);
+            if (ShapeClass) {
+                const newShape = ShapeClass.fromJSON(this.clipboard);
+                // Offset the pasted shape
+                newShape.id = Math.random().toString(36).substr(2, 9);
+                newShape.x += 20;
+                newShape.y += 20;
+
+                this.engine.addShape(newShape);
+                const action = createAddShapeAction(this.engine, newShape);
+                this.history.push(action);
+                this.updateUndoRedoButtons();
+                this.collaboration.broadcastShapeAdd(newShape);
+
+                this.engine.selectShape(newShape);
+                this.layerManager.update();
+                this.updateProperties(newShape);
+                console.log('Pasted shape from clipboard');
+            }
+        }
+    }
+
+    duplicate() {
+        if (this.engine.selectedShape) {
+            this.copySelected();
+            this.paste();
+        }
+    }
+
+    selectAll() {
+        // For now, just select the last shape
+        // TODO: Implement proper multi-selection
+        if (this.engine.shapes.length > 0) {
+            const lastShape = this.engine.shapes[this.engine.shapes.length - 1];
+            this.engine.selectShape(lastShape);
+            this.layerManager.update();
+            this.updateProperties(lastShape);
+        }
+    }
+
+    getShapeClass(type) {
+        switch (type) {
+            case 'rectangle': return Rectangle;
+            case 'circle': return Circle;
+            case 'line': return Line;
+            case 'text': return Text;
+            default: return null;
+        }
     }
 
     exportPNG() {
