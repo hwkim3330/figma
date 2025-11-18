@@ -30,6 +30,11 @@ class DesignApp {
         this.isSelecting = false;
         this.selectionStart = null;
         this.selectionBox = null;
+        this.isResizing = false;
+        this.resizeHandle = null;
+        this.resizeStart = null;
+        this.isRotating = false;
+        this.rotationStart = null;
 
         this.fillColor = '#0d99ff';
         this.strokeColor = '#333333';
@@ -47,6 +52,7 @@ class DesignApp {
         this.setupKeyboardShortcuts();
         this.setupShare();
         this.setupExport();
+        this.setupContextMenu();
 
         // Initialize collaboration
         try {
@@ -128,6 +134,14 @@ class DesignApp {
         // Context menu
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            if (this.engine.selectedShape) {
+                this.showContextMenu(e.clientX, e.clientY);
+            }
+        });
+
+        // Hide context menu on click outside
+        document.addEventListener('click', () => {
+            this.hideContextMenu();
         });
     }
 
@@ -260,16 +274,33 @@ class DesignApp {
                 }
             }
 
-            // Delete
+            // Delete - only if not editing text
             if (e.key === 'Delete' || e.key === 'Backspace') {
+                // Don't delete shapes if editing text
+                if (this.textEditor && this.textEditor.isActive()) {
+                    return;
+                }
+
+                // Don't delete on Backspace if in an input field
+                if (e.key === 'Backspace' && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+                    return;
+                }
+
                 if (this.engine.selectedShape) {
                     e.preventDefault();
-                    const shape = this.layerManager.deleteSelected();
-                    if (shape) {
+                    const shapes = this.engine.getSelectedShapes();
+
+                    // Delete all selected shapes
+                    shapes.forEach(shape => {
+                        this.engine.removeShape(shape);
                         const action = createRemoveShapeAction(this.engine, shape);
                         this.history.push(action);
                         this.collaboration.broadcastShapeRemove(shape);
-                    }
+                    });
+
+                    this.layerManager.update();
+                    this.updateProperties(null);
+                    this.updateUndoRedoButtons();
                 }
             }
 
@@ -429,6 +460,84 @@ class DesignApp {
         });
     }
 
+    setupContextMenu() {
+        document.getElementById('ctx-copy').addEventListener('click', () => {
+            this.copySelected();
+            this.hideContextMenu();
+        });
+
+        document.getElementById('ctx-paste').addEventListener('click', () => {
+            this.paste();
+            this.hideContextMenu();
+        });
+
+        document.getElementById('ctx-duplicate').addEventListener('click', () => {
+            this.duplicate();
+            this.hideContextMenu();
+        });
+
+        document.getElementById('ctx-delete').addEventListener('click', () => {
+            if (this.engine.selectedShape) {
+                const shapes = this.engine.getSelectedShapes();
+                shapes.forEach(shape => {
+                    this.engine.removeShape(shape);
+                    this.collaboration.broadcastShapeRemove(shape);
+                });
+                this.layerManager.update();
+                this.updateProperties(null);
+            }
+            this.hideContextMenu();
+        });
+
+        document.getElementById('ctx-bring-front').addEventListener('click', () => {
+            this.bringToFront();
+            this.hideContextMenu();
+        });
+
+        document.getElementById('ctx-send-back').addEventListener('click', () => {
+            this.sendToBack();
+            this.hideContextMenu();
+        });
+    }
+
+    showContextMenu(x, y) {
+        const menu = document.getElementById('context-menu');
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+        menu.classList.add('active');
+    }
+
+    hideContextMenu() {
+        const menu = document.getElementById('context-menu');
+        menu.classList.remove('active');
+    }
+
+    bringToFront() {
+        if (!this.engine.selectedShape || Array.isArray(this.engine.selectedShape)) return;
+
+        const shape = this.engine.selectedShape;
+        const index = this.engine.shapes.indexOf(shape);
+        if (index > -1) {
+            this.engine.shapes.splice(index, 1);
+            this.engine.shapes.push(shape);
+            this.engine.render();
+            this.layerManager.update();
+        }
+    }
+
+    sendToBack() {
+        if (!this.engine.selectedShape || Array.isArray(this.engine.selectedShape)) return;
+
+        const shape = this.engine.selectedShape;
+        const index = this.engine.shapes.indexOf(shape);
+        if (index > -1) {
+            this.engine.shapes.splice(index, 1);
+            this.engine.shapes.unshift(shape);
+            this.engine.render();
+            this.layerManager.update();
+        }
+    }
+
     handleMouseDown(e) {
         const rect = this.engine.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -436,6 +545,35 @@ class DesignApp {
         const canvasPos = this.engine.screenToCanvas(x, y);
 
         if (this.currentTool === 'select') {
+            // Check for resize/rotation handles first
+            const handle = this.engine.getHandleAt(canvasPos.x, canvasPos.y);
+            if (handle) {
+                if (handle.type === 'rotate') {
+                    this.isRotating = true;
+                    this.rotationStart = {
+                        angle: Math.atan2(
+                            canvasPos.y - this.engine.selectedShape.y,
+                            canvasPos.x - this.engine.selectedShape.x
+                        ),
+                        initialRotation: this.engine.selectedShape.rotation || 0
+                    };
+                } else {
+                    this.isResizing = true;
+                    this.resizeHandle = handle;
+                    this.resizeStart = {
+                        x: canvasPos.x,
+                        y: canvasPos.y,
+                        bounds: this.engine.selectedShape.getBounds(),
+                        shapeX: this.engine.selectedShape.x,
+                        shapeY: this.engine.selectedShape.y,
+                        shapeWidth: this.engine.selectedShape.width,
+                        shapeHeight: this.engine.selectedShape.height,
+                        shapeRadius: this.engine.selectedShape.radius
+                    };
+                }
+                return;
+            }
+
             const shape = this.engine.getShapeAt(x, y);
             if (shape) {
                 // Shift+Click for multi-selection
@@ -509,6 +647,45 @@ class DesignApp {
         // Broadcast cursor position
         this.collaboration.broadcastCursor(canvasPos.x, canvasPos.y);
 
+        // Update cursor based on handles
+        if (this.currentTool === 'select' && !this.isDragging && !this.isResizing && !this.isRotating) {
+            const handle = this.engine.getHandleAt(canvasPos.x, canvasPos.y);
+            if (handle) {
+                this.engine.canvas.style.cursor = handle.cursor;
+            } else {
+                this.updateCursor();
+            }
+        }
+
+        if (this.isRotating && this.rotationStart) {
+            const angle = Math.atan2(
+                canvasPos.y - this.engine.selectedShape.y,
+                canvasPos.x - this.engine.selectedShape.x
+            );
+            const deltaAngle = angle - this.rotationStart.angle;
+            this.engine.selectedShape.rotation = this.rotationStart.initialRotation + (deltaAngle * 180 / Math.PI);
+            this.engine.render();
+            this.updateProperties(this.engine.selectedShape);
+            this.engine.canvas.style.cursor = 'grabbing';
+            return;
+        }
+
+        if (this.isResizing && this.resizeHandle && this.resizeStart) {
+            const dx = canvasPos.x - this.resizeStart.x;
+            const dy = canvasPos.y - this.resizeStart.y;
+            const shape = this.engine.selectedShape;
+
+            if (shape.type === 'rectangle') {
+                this.resizeRectangle(shape, this.resizeHandle.type, dx, dy);
+            } else if (shape.type === 'circle') {
+                this.resizeCircle(shape, this.resizeHandle.type, dx, dy);
+            }
+
+            this.engine.render();
+            this.updateProperties(shape);
+            return;
+        }
+
         if (this.isPanning && this.panStart) {
             const dx = (e.clientX - this.panStart.x) / this.engine.zoom;
             const dy = (e.clientY - this.panStart.y) / this.engine.zoom;
@@ -525,6 +702,19 @@ class DesignApp {
             this.draggedShape.y = this.dragInitialPos.y + dy;
             this.engine.render();
             this.updateProperties(this.draggedShape);
+            return;
+        }
+
+        if (this.isSelecting && this.selectionStart) {
+            // Draw selection box
+            this.selectionBox = {
+                x1: this.selectionStart.x,
+                y1: this.selectionStart.y,
+                x2: canvasPos.x,
+                y2: canvasPos.y
+            };
+            this.engine.render();
+            this.drawSelectionBox();
             return;
         }
 
@@ -556,7 +746,52 @@ class DesignApp {
         }
     }
 
+    drawSelectionBox() {
+        if (!this.selectionBox) return;
+
+        const ctx = this.engine.ctx;
+        ctx.save();
+
+        // Apply transformations
+        ctx.translate(this.engine.canvas.width / 2, this.engine.canvas.height / 2);
+        ctx.scale(this.engine.zoom, this.engine.zoom);
+        ctx.translate(this.engine.pan.x, this.engine.pan.y);
+
+        // Draw selection rectangle
+        const minX = Math.min(this.selectionBox.x1, this.selectionBox.x2);
+        const minY = Math.min(this.selectionBox.y1, this.selectionBox.y2);
+        const width = Math.abs(this.selectionBox.x2 - this.selectionBox.x1);
+        const height = Math.abs(this.selectionBox.y2 - this.selectionBox.y1);
+
+        // Fill
+        ctx.fillStyle = 'rgba(13, 153, 255, 0.1)';
+        ctx.fillRect(minX, minY, width, height);
+
+        // Border
+        ctx.strokeStyle = '#0d99ff';
+        ctx.lineWidth = 1 / this.engine.zoom;
+        ctx.setLineDash([5 / this.engine.zoom, 5 / this.engine.zoom]);
+        ctx.strokeRect(minX, minY, width, height);
+
+        ctx.restore();
+    }
+
     handleMouseUp(e) {
+        if (this.isRotating) {
+            this.isRotating = false;
+            this.rotationStart = null;
+            this.updateCursor();
+            return;
+        }
+
+        if (this.isResizing) {
+            this.isResizing = false;
+            this.resizeHandle = null;
+            this.resizeStart = null;
+            this.updateCursor();
+            return;
+        }
+
         if (this.isPanning) {
             this.isPanning = false;
             this.panStart = null;
@@ -665,16 +900,25 @@ class DesignApp {
     }
 
     handleDoubleClick(e) {
-        if (this.currentTool !== 'select') return;
-
         const rect = this.engine.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         const shape = this.engine.getShapeAt(x, y);
 
-        // Double-click on text to edit
+        // Double-click on text to edit - works from any tool
         if (shape && shape.type === 'text') {
+            // Temporarily switch to select tool
+            const previousTool = this.currentTool;
+            this.currentTool = 'select';
+
+            // Start editing
             this.textEditor.startEditing(shape);
+
+            // Restore tool after editing is done
+            this.textEditor.onEditingComplete = () => {
+                this.currentTool = previousTool;
+                this.updateCursor();
+            };
         }
     }
 
@@ -874,6 +1118,67 @@ class DesignApp {
             this.layerManager.update();
             this.updateProperties(lastShape);
         }
+    }
+
+    resizeRectangle(shape, handleType, dx, dy) {
+        const start = this.resizeStart;
+
+        switch (handleType) {
+            case 'se': // bottom-right
+                shape.width = Math.max(10, start.shapeWidth + dx);
+                shape.height = Math.max(10, start.shapeHeight + dy);
+                shape.x = start.shapeX + dx / 2;
+                shape.y = start.shapeY + dy / 2;
+                break;
+            case 'nw': // top-left
+                shape.width = Math.max(10, start.shapeWidth - dx);
+                shape.height = Math.max(10, start.shapeHeight - dy);
+                shape.x = start.shapeX + dx / 2;
+                shape.y = start.shapeY + dy / 2;
+                break;
+            case 'ne': // top-right
+                shape.width = Math.max(10, start.shapeWidth + dx);
+                shape.height = Math.max(10, start.shapeHeight - dy);
+                shape.x = start.shapeX + dx / 2;
+                shape.y = start.shapeY + dy / 2;
+                break;
+            case 'sw': // bottom-left
+                shape.width = Math.max(10, start.shapeWidth - dx);
+                shape.height = Math.max(10, start.shapeHeight + dy);
+                shape.x = start.shapeX + dx / 2;
+                shape.y = start.shapeY + dy / 2;
+                break;
+            case 'e': // right
+                shape.width = Math.max(10, start.shapeWidth + dx);
+                shape.x = start.shapeX + dx / 2;
+                break;
+            case 'w': // left
+                shape.width = Math.max(10, start.shapeWidth - dx);
+                shape.x = start.shapeX + dx / 2;
+                break;
+            case 'n': // top
+                shape.height = Math.max(10, start.shapeHeight - dy);
+                shape.y = start.shapeY + dy / 2;
+                break;
+            case 's': // bottom
+                shape.height = Math.max(10, start.shapeHeight + dy);
+                shape.y = start.shapeY + dy / 2;
+                break;
+        }
+    }
+
+    resizeCircle(shape, handleType, dx, dy) {
+        const start = this.resizeStart;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Determine if we're increasing or decreasing radius
+        const isIncreasing = (handleType.includes('e') && dx > 0) ||
+                            (handleType.includes('w') && dx < 0) ||
+                            (handleType.includes('s') && dy > 0) ||
+                            (handleType.includes('n') && dy < 0);
+
+        const delta = isIncreasing ? distance : -distance;
+        shape.radius = Math.max(5, start.shapeRadius + delta);
     }
 
     getShapeClass(type) {

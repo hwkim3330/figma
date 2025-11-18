@@ -134,8 +134,8 @@ export class CanvasEngine {
     drawSelection(selection) {
         this.ctx.save();
         this.ctx.strokeStyle = '#0d99ff';
-        this.ctx.lineWidth = 2 / this.zoom;
-        this.ctx.setLineDash([5 / this.zoom, 5 / this.zoom]);
+        this.ctx.lineWidth = 1.5 / this.zoom;
+        this.ctx.setLineDash([]);
 
         // Handle multi-selection
         if (Array.isArray(selection)) {
@@ -156,32 +156,90 @@ export class CanvasEngine {
             const bounds = selection.getBounds();
             this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
-            // Draw handles for single selection
-            const handles = [
-                { x: bounds.x, y: bounds.y }, // top-left
-                { x: bounds.x + bounds.width / 2, y: bounds.y }, // top-center
-                { x: bounds.x + bounds.width, y: bounds.y }, // top-right
-                { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2 }, // right-center
-                { x: bounds.x + bounds.width, y: bounds.y + bounds.height }, // bottom-right
-                { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height }, // bottom-center
-                { x: bounds.x, y: bounds.y + bounds.height }, // bottom-left
-                { x: bounds.x, y: bounds.y + bounds.height / 2 }, // left-center
-            ];
+            // Draw resize handles (Figma-style squares)
+            const handleSize = 8 / this.zoom;
+            const handles = this.getHandlePositions(bounds);
 
             this.ctx.fillStyle = 'white';
             this.ctx.strokeStyle = '#0d99ff';
-            this.ctx.lineWidth = 1 / this.zoom;
-            this.ctx.setLineDash([]);
+            this.ctx.lineWidth = 1.5 / this.zoom;
 
             handles.forEach(handle => {
-                this.ctx.beginPath();
-                this.ctx.arc(handle.x, handle.y, 4 / this.zoom, 0, Math.PI * 2);
-                this.ctx.fill();
-                this.ctx.stroke();
+                this.ctx.fillRect(
+                    handle.x - handleSize / 2,
+                    handle.y - handleSize / 2,
+                    handleSize,
+                    handleSize
+                );
+                this.ctx.strokeRect(
+                    handle.x - handleSize / 2,
+                    handle.y - handleSize / 2,
+                    handleSize,
+                    handleSize
+                );
             });
+
+            // Draw rotation handle
+            const rotationY = bounds.y - 30 / this.zoom;
+            this.ctx.beginPath();
+            this.ctx.arc(bounds.x + bounds.width / 2, rotationY, 4 / this.zoom, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Draw line from top-center to rotation handle
+            this.ctx.beginPath();
+            this.ctx.moveTo(bounds.x + bounds.width / 2, bounds.y);
+            this.ctx.lineTo(bounds.x + bounds.width / 2, rotationY);
+            this.ctx.strokeStyle = '#0d99ff';
+            this.ctx.lineWidth = 1 / this.zoom;
+            this.ctx.stroke();
         }
 
         this.ctx.restore();
+    }
+
+    getHandlePositions(bounds) {
+        return [
+            { x: bounds.x, y: bounds.y, cursor: 'nw-resize', type: 'nw' }, // top-left
+            { x: bounds.x + bounds.width / 2, y: bounds.y, cursor: 'n-resize', type: 'n' }, // top-center
+            { x: bounds.x + bounds.width, y: bounds.y, cursor: 'ne-resize', type: 'ne' }, // top-right
+            { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, cursor: 'e-resize', type: 'e' }, // right-center
+            { x: bounds.x + bounds.width, y: bounds.y + bounds.height, cursor: 'se-resize', type: 'se' }, // bottom-right
+            { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, cursor: 's-resize', type: 's' }, // bottom-center
+            { x: bounds.x, y: bounds.y + bounds.height, cursor: 'sw-resize', type: 'sw' }, // bottom-left
+            { x: bounds.x, y: bounds.y + bounds.height / 2, cursor: 'w-resize', type: 'w' }, // left-center
+        ];
+    }
+
+    getHandleAt(x, y) {
+        if (!this.selectedShape || Array.isArray(this.selectedShape)) return null;
+
+        const bounds = this.selectedShape.getBounds();
+        const handles = this.getHandlePositions(bounds);
+        const handleSize = 8 / this.zoom;
+        const screenPos = this.canvasToScreen(x, y);
+
+        // Check rotation handle
+        const rotationY = bounds.y - 30 / this.zoom;
+        const rotationHandle = this.canvasToScreen(bounds.x + bounds.width / 2, rotationY);
+        const rotationDist = Math.sqrt(
+            Math.pow(screenPos.x - rotationHandle.x, 2) +
+            Math.pow(screenPos.y - rotationHandle.y, 2)
+        );
+        if (rotationDist < 6) {
+            return { type: 'rotate', cursor: 'grab' };
+        }
+
+        // Check resize handles
+        for (let handle of handles) {
+            const handleScreen = this.canvasToScreen(handle.x, handle.y);
+            if (Math.abs(screenPos.x - handleScreen.x) <= handleSize / 2 &&
+                Math.abs(screenPos.y - handleScreen.y) <= handleSize / 2) {
+                return handle;
+            }
+        }
+
+        return null;
     }
 
     getCombinedBounds(shapes) {

@@ -5,6 +5,7 @@ export class TextEditor {
         this.editingShape = null;
         this.editorElement = null;
         this.isEditing = false;
+        this.onEditingComplete = null;
 
         this.createEditorElement();
     }
@@ -108,6 +109,12 @@ export class TextEditor {
         this.isEditing = false;
         this.editingShape = null;
         this.engine.render();
+
+        // Call completion callback
+        if (this.onEditingComplete) {
+            this.onEditingComplete();
+            this.onEditingComplete = null;
+        }
     }
 
     isActive() {
