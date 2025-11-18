@@ -39,14 +39,56 @@ export class CanvasEngine {
         return false;
     }
 
-    selectShape(shape) {
-        this.selectedShape = shape;
+    selectShape(shape, addToSelection = false) {
+        if (addToSelection && Array.isArray(this.selectedShape)) {
+            // Add to existing multi-selection
+            if (!this.selectedShape.includes(shape)) {
+                this.selectedShape.push(shape);
+            }
+        } else if (addToSelection && this.selectedShape) {
+            // Convert single selection to multi-selection
+            this.selectedShape = [this.selectedShape, shape];
+        } else {
+            // Single selection
+            this.selectedShape = shape;
+        }
         this.render();
     }
 
     deselectAll() {
         this.selectedShape = null;
         this.render();
+    }
+
+    getSelectedShapes() {
+        if (!this.selectedShape) return [];
+        if (Array.isArray(this.selectedShape)) return this.selectedShape;
+        return [this.selectedShape];
+    }
+
+    selectMultiple(shapes) {
+        if (shapes.length === 0) {
+            this.selectedShape = null;
+        } else if (shapes.length === 1) {
+            this.selectedShape = shapes[0];
+        } else {
+            this.selectedShape = shapes;
+        }
+        this.render();
+    }
+
+    getShapesInRect(x1, y1, x2, y2) {
+        const minX = Math.min(x1, x2);
+        const minY = Math.min(y1, y2);
+        const maxX = Math.max(x1, x2);
+        const maxY = Math.max(y1, y2);
+
+        return this.shapes.filter(shape => {
+            const bounds = shape.getBounds();
+            return bounds.x >= minX && bounds.y >= minY &&
+                   bounds.x + bounds.width <= maxX &&
+                   bounds.y + bounds.height <= maxY;
+        });
     }
 
     getShapeAt(x, y) {
@@ -89,40 +131,79 @@ export class CanvasEngine {
         this.ctx.restore();
     }
 
-    drawSelection(shape) {
+    drawSelection(selection) {
         this.ctx.save();
-        this.ctx.strokeStyle = '#3b82f6';
+        this.ctx.strokeStyle = '#0d99ff';
         this.ctx.lineWidth = 2 / this.zoom;
         this.ctx.setLineDash([5 / this.zoom, 5 / this.zoom]);
 
-        const bounds = shape.getBounds();
-        this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        // Handle multi-selection
+        if (Array.isArray(selection)) {
+            // Draw selection for each shape
+            selection.forEach(shape => {
+                const bounds = shape.getBounds();
+                this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            });
 
-        // Draw handles
-        const handles = [
-            { x: bounds.x, y: bounds.y }, // top-left
-            { x: bounds.x + bounds.width / 2, y: bounds.y }, // top-center
-            { x: bounds.x + bounds.width, y: bounds.y }, // top-right
-            { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2 }, // right-center
-            { x: bounds.x + bounds.width, y: bounds.y + bounds.height }, // bottom-right
-            { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height }, // bottom-center
-            { x: bounds.x, y: bounds.y + bounds.height }, // bottom-left
-            { x: bounds.x, y: bounds.y + bounds.height / 2 }, // left-center
-        ];
+            // Draw combined bounding box
+            if (selection.length > 1) {
+                const combinedBounds = this.getCombinedBounds(selection);
+                this.ctx.strokeStyle = '#10b981';
+                this.ctx.strokeRect(combinedBounds.x, combinedBounds.y, combinedBounds.width, combinedBounds.height);
+            }
+        } else {
+            // Single selection
+            const bounds = selection.getBounds();
+            this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
-        this.ctx.fillStyle = 'white';
-        this.ctx.strokeStyle = '#3b82f6';
-        this.ctx.lineWidth = 1 / this.zoom;
-        this.ctx.setLineDash([]);
+            // Draw handles for single selection
+            const handles = [
+                { x: bounds.x, y: bounds.y }, // top-left
+                { x: bounds.x + bounds.width / 2, y: bounds.y }, // top-center
+                { x: bounds.x + bounds.width, y: bounds.y }, // top-right
+                { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2 }, // right-center
+                { x: bounds.x + bounds.width, y: bounds.y + bounds.height }, // bottom-right
+                { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height }, // bottom-center
+                { x: bounds.x, y: bounds.y + bounds.height }, // bottom-left
+                { x: bounds.x, y: bounds.y + bounds.height / 2 }, // left-center
+            ];
 
-        handles.forEach(handle => {
-            this.ctx.beginPath();
-            this.ctx.arc(handle.x, handle.y, 4 / this.zoom, 0, Math.PI * 2);
-            this.ctx.fill();
-            this.ctx.stroke();
-        });
+            this.ctx.fillStyle = 'white';
+            this.ctx.strokeStyle = '#0d99ff';
+            this.ctx.lineWidth = 1 / this.zoom;
+            this.ctx.setLineDash([]);
+
+            handles.forEach(handle => {
+                this.ctx.beginPath();
+                this.ctx.arc(handle.x, handle.y, 4 / this.zoom, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+            });
+        }
 
         this.ctx.restore();
+    }
+
+    getCombinedBounds(shapes) {
+        if (shapes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+
+        shapes.forEach(shape => {
+            const bounds = shape.getBounds();
+            minX = Math.min(minX, bounds.x);
+            minY = Math.min(minY, bounds.y);
+            maxX = Math.max(maxX, bounds.x + bounds.width);
+            maxY = Math.max(maxY, bounds.y + bounds.height);
+        });
+
+        return {
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        };
     }
 
     setZoom(zoom) {

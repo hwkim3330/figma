@@ -2,6 +2,7 @@ import { CanvasEngine, Rectangle, Circle, Line, Text } from './canvas-engine.js'
 import { History, createAddShapeAction, createRemoveShapeAction, createModifyShapeAction } from './history.js';
 import { Collaboration } from './collaboration.js';
 import { LayerManager } from './layers.js';
+import { TextEditor } from './text-editor.js';
 
 // Export shape classes to window for collaboration
 window.Rectangle = Rectangle;
@@ -15,6 +16,7 @@ class DesignApp {
         this.history = new History();
         this.collaboration = new Collaboration(this.engine);
         this.layerManager = new LayerManager(this.engine, 'layers-panel');
+        this.textEditor = null; // Will be initialized after collaboration
 
         this.currentTool = 'select';
         this.isDrawing = false;
@@ -25,6 +27,9 @@ class DesignApp {
         this.draggedShape = null;
         this.isPanning = false;
         this.panStart = null;
+        this.isSelecting = false;
+        this.selectionStart = null;
+        this.selectionBox = null;
 
         this.fillColor = '#0d99ff';
         this.strokeColor = '#333333';
@@ -55,6 +60,9 @@ class DesignApp {
             console.error('Failed to initialize collaboration:', err);
             document.getElementById('my-peer-id').textContent = 'Collaboration unavailable';
         }
+
+        // Initialize text editor
+        this.textEditor = new TextEditor(this.engine, this.collaboration);
 
         // Update layer manager callback
         this.layerManager.onSelectionChange = (shape) => {
@@ -115,6 +123,7 @@ class DesignApp {
         canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         canvas.addEventListener('wheel', (e) => this.handleWheel(e));
+        canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
 
         // Context menu
         canvas.addEventListener('contextmenu', (e) => {
