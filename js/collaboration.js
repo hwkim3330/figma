@@ -62,7 +62,7 @@ export class Collaboration {
 
     getShareURL() {
         if (!this.myId) return null;
-        const url = new URL(window.location.href);
+        const url = new URL(window.location.origin + window.location.pathname);
         url.searchParams.set('connect', this.myId);
         return url.toString();
     }

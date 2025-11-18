@@ -95,15 +95,6 @@ class DesignApp {
         document.getElementById('undo-btn').addEventListener('click', () => this.undo());
         document.getElementById('redo-btn').addEventListener('click', () => this.redo());
 
-        // Collaboration
-        document.getElementById('connect-btn').addEventListener('click', () => {
-            const peerId = document.getElementById('peer-id-input').value.trim();
-            if (peerId) {
-                this.collaboration.connectToPeer(peerId);
-                document.getElementById('peer-id-input').value = '';
-            }
-        });
-
         // Delete layer
         document.getElementById('delete-layer-btn').addEventListener('click', () => {
             const shape = this.layerManager.deleteSelected();
