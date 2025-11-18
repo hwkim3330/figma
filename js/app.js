@@ -438,7 +438,9 @@ class DesignApp {
         if (this.currentTool === 'select') {
             const shape = this.engine.getShapeAt(x, y);
             if (shape) {
-                this.engine.selectShape(shape);
+                // Shift+Click for multi-selection
+                const addToSelection = e.shiftKey;
+                this.engine.selectShape(shape, addToSelection);
                 this.layerManager.update();
                 this.updateProperties(shape);
                 this.isDragging = true;
@@ -446,12 +448,23 @@ class DesignApp {
                 this.draggedShape = shape;
                 this.dragInitialPos = { x: shape.x, y: shape.y };
             } else {
-                this.engine.deselectAll();
-                this.layerManager.update();
-                this.updateProperties(null);
-                // Start panning
-                this.isPanning = true;
-                this.panStart = { x: e.clientX, y: e.clientY };
+                // If not clicking on a shape, start selection box or pan
+                if (e.shiftKey) {
+                    // Start drag selection
+                    this.isSelecting = true;
+                    this.selectionStart = canvasPos;
+                } else if (e.button === 1 || e.ctrlKey) {
+                    // Middle click or Ctrl+Click for panning
+                    this.isPanning = true;
+                    this.panStart = { x: e.clientX, y: e.clientY };
+                } else {
+                    this.engine.deselectAll();
+                    this.layerManager.update();
+                    this.updateProperties(null);
+                    // Start selection box
+                    this.isSelecting = true;
+                    this.selectionStart = canvasPos;
+                }
             }
         } else {
             this.isDrawing = true;
@@ -550,6 +563,35 @@ class DesignApp {
             return;
         }
 
+        if (this.isSelecting && this.selectionStart) {
+            const rect = this.engine.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const canvasPos = this.engine.screenToCanvas(x, y);
+
+            // Get shapes in selection box
+            const selectedShapes = this.engine.getShapesInRect(
+                this.selectionStart.x,
+                this.selectionStart.y,
+                canvasPos.x,
+                canvasPos.y
+            );
+
+            if (selectedShapes.length > 0) {
+                this.engine.selectMultiple(selectedShapes);
+                this.layerManager.update();
+                if (selectedShapes.length === 1) {
+                    this.updateProperties(selectedShapes[0]);
+                }
+            }
+
+            this.isSelecting = false;
+            this.selectionStart = null;
+            this.selectionBox = null;
+            this.engine.render();
+            return;
+        }
+
         if (this.isDragging && this.draggedShape) {
             const action = createModifyShapeAction(
                 this.engine,
@@ -620,6 +662,20 @@ class DesignApp {
         this.engine.setZoom(this.engine.zoom * delta);
         this.updateZoomLevel();
         this.collaboration.drawCursors();
+    }
+
+    handleDoubleClick(e) {
+        if (this.currentTool !== 'select') return;
+
+        const rect = this.engine.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const shape = this.engine.getShapeAt(x, y);
+
+        // Double-click on text to edit
+        if (shape && shape.type === 'text') {
+            this.textEditor.startEditing(shape);
+        }
     }
 
     selectTool(tool) {
