@@ -26,9 +26,9 @@ class DesignApp {
         this.isPanning = false;
         this.panStart = null;
 
-        this.fillColor = '#3b82f6';
-        this.strokeColor = '#000000';
-        this.strokeWidth = 2;
+        this.fillColor = '#0d99ff';
+        this.strokeColor = '#333333';
+        this.strokeWidth = 1;
 
         this.clipboard = null;
 

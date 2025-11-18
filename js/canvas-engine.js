@@ -247,9 +247,9 @@ export class Shape {
         this.x = x;
         this.y = y;
         this.rotation = properties.rotation || 0;
-        this.fillColor = properties.fillColor || '#3b82f6';
-        this.strokeColor = properties.strokeColor || '#000000';
-        this.strokeWidth = properties.strokeWidth || 2;
+        this.fillColor = properties.fillColor || '#0d99ff';
+        this.strokeColor = properties.strokeColor || '#333333';
+        this.strokeWidth = properties.strokeWidth || 1;
         this.opacity = properties.opacity !== undefined ? properties.opacity : 1;
         this.cornerRadius = properties.cornerRadius || 0;
         this.visible = properties.visible !== undefined ? properties.visible : true;
