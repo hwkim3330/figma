@@ -1,4 +1,4 @@
-import { CanvasEngine, Rectangle, Circle, Line, Text } from './canvas-engine.js';
+import { CanvasEngine, Rectangle, Circle, Line, Text, Star, Triangle, Arrow } from './canvas-engine.js';
 import { History, createAddShapeAction, createRemoveShapeAction, createModifyShapeAction } from './history.js';
 import { Collaboration } from './collaboration.js';
 import { LayerManager } from './layers.js';
@@ -9,6 +9,9 @@ window.Rectangle = Rectangle;
 window.Circle = Circle;
 window.Line = Line;
 window.Text = Text;
+window.Star = Star;
+window.Triangle = Triangle;
+window.Arrow = Arrow;
 
 class DesignApp {
     constructor() {
@@ -259,7 +262,7 @@ class DesignApp {
                     case 'r':
                         this.selectTool('rectangle');
                         break;
-                    case 'c':
+                    case 'o':
                         this.selectTool('circle');
                         break;
                     case 'l':
@@ -268,8 +271,15 @@ class DesignApp {
                     case 't':
                         this.selectTool('text');
                         break;
-                    case 'p':
-                        this.selectTool('pen');
+                    case 's':
+                        if (!e.shiftKey) {
+                            this.selectTool('star');
+                        }
+                        break;
+                    case 'a':
+                        if (!e.ctrlKey) {
+                            this.selectTool('arrow');
+                        }
                         break;
                 }
             }
@@ -566,9 +576,9 @@ class DesignApp {
                         bounds: this.engine.selectedShape.getBounds(),
                         shapeX: this.engine.selectedShape.x,
                         shapeY: this.engine.selectedShape.y,
-                        shapeWidth: this.engine.selectedShape.width,
+                        shapeWidth: this.engine.selectedShape.width || this.engine.selectedShape.size,
                         shapeHeight: this.engine.selectedShape.height,
-                        shapeRadius: this.engine.selectedShape.radius
+                        shapeRadius: this.engine.selectedShape.radius || this.engine.selectedShape.outerRadius
                     };
                 }
                 return;
@@ -630,6 +640,27 @@ class DesignApp {
                         strokeWidth: this.strokeWidth
                     });
                     break;
+                case 'triangle':
+                    this.tempShape = new Triangle(canvasPos.x, canvasPos.y, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'star':
+                    this.tempShape = new Star(canvasPos.x, canvasPos.y, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'arrow':
+                    this.tempShape = new Arrow(canvasPos.x, canvasPos.y, 0, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
             }
 
             if (this.tempShape) {
@@ -675,10 +706,14 @@ class DesignApp {
             const dy = canvasPos.y - this.resizeStart.y;
             const shape = this.engine.selectedShape;
 
-            if (shape.type === 'rectangle') {
+            if (shape.type === 'rectangle' || shape.type === 'arrow') {
                 this.resizeRectangle(shape, this.resizeHandle.type, dx, dy);
             } else if (shape.type === 'circle') {
                 this.resizeCircle(shape, this.resizeHandle.type, dx, dy);
+            } else if (shape.type === 'star') {
+                this.resizeStar(shape, this.resizeHandle.type, dx, dy);
+            } else if (shape.type === 'triangle') {
+                this.resizeTriangle(shape, this.resizeHandle.type, dx, dy);
             }
 
             this.engine.render();
@@ -740,6 +775,29 @@ class DesignApp {
                     this.tempShape.y2 = canvasPos.y;
                     this.tempShape.x = (this.tempShape.x1 + this.tempShape.x2) / 2;
                     this.tempShape.y = (this.tempShape.y1 + this.tempShape.y2) / 2;
+                    break;
+                case 'triangle':
+                    const triSize = Math.sqrt(
+                        Math.pow(canvasPos.x - this.drawStart.x, 2) +
+                        Math.pow(canvasPos.y - this.drawStart.y, 2)
+                    ) * 2;
+                    this.tempShape.size = triSize;
+                    break;
+                case 'star':
+                    const starRadius = Math.sqrt(
+                        Math.pow(canvasPos.x - this.drawStart.x, 2) +
+                        Math.pow(canvasPos.y - this.drawStart.y, 2)
+                    );
+                    this.tempShape.outerRadius = starRadius;
+                    this.tempShape.innerRadius = starRadius * 0.4;
+                    break;
+                case 'arrow':
+                    const arrowWidth = canvasPos.x - this.drawStart.x;
+                    const arrowHeight = canvasPos.y - this.drawStart.y;
+                    this.tempShape.x = this.drawStart.x + arrowWidth / 2;
+                    this.tempShape.y = this.drawStart.y + arrowHeight / 2;
+                    this.tempShape.width = Math.abs(arrowWidth);
+                    this.tempShape.height = Math.abs(arrowHeight);
                     break;
             }
             this.engine.render();
@@ -1181,12 +1239,42 @@ class DesignApp {
         shape.radius = Math.max(5, start.shapeRadius + delta);
     }
 
+    resizeStar(shape, handleType, dx, dy) {
+        const start = this.resizeStart;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const isIncreasing = (handleType.includes('e') && dx > 0) ||
+                            (handleType.includes('w') && dx < 0) ||
+                            (handleType.includes('s') && dy > 0) ||
+                            (handleType.includes('n') && dy < 0);
+
+        const delta = isIncreasing ? distance : -distance;
+        shape.outerRadius = Math.max(10, start.shapeRadius + delta);
+        shape.innerRadius = shape.outerRadius * 0.4;
+    }
+
+    resizeTriangle(shape, handleType, dx, dy) {
+        const start = this.resizeStart;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const isIncreasing = (handleType.includes('e') && dx > 0) ||
+                            (handleType.includes('w') && dx < 0) ||
+                            (handleType.includes('s') && dy > 0) ||
+                            (handleType.includes('n') && dy < 0);
+
+        const delta = isIncreasing ? distance : -distance;
+        shape.size = Math.max(10, (start.shapeWidth || start.shapeRadius) + delta);
+    }
+
     getShapeClass(type) {
         switch (type) {
             case 'rectangle': return Rectangle;
             case 'circle': return Circle;
             case 'line': return Line;
             case 'text': return Text;
+            case 'star': return Star;
+            case 'triangle': return Triangle;
+            case 'arrow': return Arrow;
             default: return null;
         }
     }

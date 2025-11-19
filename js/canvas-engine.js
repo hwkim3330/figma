@@ -452,6 +452,12 @@ export class Shape {
                 return Line.fromJSON(data);
             case 'text':
                 return Text.fromJSON(data);
+            case 'star':
+                return Star.fromJSON(data);
+            case 'triangle':
+                return Triangle.fromJSON(data);
+            case 'arrow':
+                return Arrow.fromJSON(data);
             default:
                 return null;
         }
@@ -724,5 +730,251 @@ export class Text extends Shape {
 
     static fromJSON(data) {
         return new Text(data.x, data.y, data.text, data);
+    }
+}
+
+export class Star extends Shape {
+    constructor(x, y, outerRadius, properties = {}) {
+        super('star', x, y, properties);
+        this.outerRadius = outerRadius;
+        this.innerRadius = outerRadius * 0.4;
+        this.points = properties.points || 5;
+    }
+
+    drawShape(ctx) {
+        ctx.fillStyle = this.fillColor;
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = this.strokeWidth;
+
+        ctx.beginPath();
+        for (let i = 0; i < this.points * 2; i++) {
+            const angle = (Math.PI / this.points) * i - Math.PI / 2;
+            const radius = i % 2 === 0 ? this.outerRadius : this.innerRadius;
+            const px = Math.cos(angle) * radius;
+            const py = Math.sin(angle) * radius;
+
+            if (i === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
+        }
+        ctx.closePath();
+        ctx.fill();
+        if (this.strokeWidth > 0) {
+            ctx.stroke();
+        }
+    }
+
+    containsPoint(px, py) {
+        const dx = px - this.x;
+        const dy = py - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        return dist <= this.outerRadius;
+    }
+
+    getBounds() {
+        return {
+            x: this.x - this.outerRadius,
+            y: this.y - this.outerRadius,
+            width: this.outerRadius * 2,
+            height: this.outerRadius * 2
+        };
+    }
+
+    toJSON() {
+        return {
+            ...super.toJSON(),
+            outerRadius: this.outerRadius,
+            innerRadius: this.innerRadius,
+            points: this.points
+        };
+    }
+
+    toSVG() {
+        let points = '';
+        for (let i = 0; i < this.points * 2; i++) {
+            const angle = (Math.PI / this.points) * i - Math.PI / 2;
+            const radius = i % 2 === 0 ? this.outerRadius : this.innerRadius;
+            const px = this.x + Math.cos(angle) * radius;
+            const py = this.y + Math.sin(angle) * radius;
+            points += `${px},${py} `;
+        }
+        return `<polygon points="${points}" fill="${this.fillColor}" stroke="${this.strokeColor}" stroke-width="${this.strokeWidth}"/>`;
+    }
+
+    static fromJSON(data) {
+        return new Star(data.x, data.y, data.outerRadius, data);
+    }
+}
+
+export class Triangle extends Shape {
+    constructor(x, y, size, properties = {}) {
+        super('triangle', x, y, properties);
+        this.size = size;
+    }
+
+    drawShape(ctx) {
+        ctx.fillStyle = this.fillColor;
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = this.strokeWidth;
+
+        const height = (this.size * Math.sqrt(3)) / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -height / 2);
+        ctx.lineTo(-this.size / 2, height / 2);
+        ctx.lineTo(this.size / 2, height / 2);
+        ctx.closePath();
+        ctx.fill();
+        if (this.strokeWidth > 0) {
+            ctx.stroke();
+        }
+    }
+
+    containsPoint(px, py) {
+        const dx = px - this.x;
+        const dy = py - this.y;
+        const height = (this.size * Math.sqrt(3)) / 2;
+
+        // Rotate point back
+        const cos = Math.cos(-this.rotation * Math.PI / 180);
+        const sin = Math.sin(-this.rotation * Math.PI / 180);
+        const rx = dx * cos - dy * sin;
+        const ry = dx * sin + dy * cos;
+
+        // Check if point is inside triangle
+        const p1y = -height / 2;
+        const p2x = -this.size / 2, p2y = height / 2;
+        const p3x = this.size / 2, p3y = height / 2;
+
+        const sign = (x1, y1, x2, y2, x3, y3) => {
+            return (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3);
+        };
+
+        const d1 = sign(rx, ry, 0, p1y, p2x, p2y);
+        const d2 = sign(rx, ry, p2x, p2y, p3x, p3y);
+        const d3 = sign(rx, ry, p3x, p3y, 0, p1y);
+
+        const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+        const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+        return !(hasNeg && hasPos);
+    }
+
+    getBounds() {
+        const height = (this.size * Math.sqrt(3)) / 2;
+        return {
+            x: this.x - this.size / 2,
+            y: this.y - height / 2,
+            width: this.size,
+            height: height
+        };
+    }
+
+    toJSON() {
+        return {
+            ...super.toJSON(),
+            size: this.size
+        };
+    }
+
+    toSVG() {
+        const height = (this.size * Math.sqrt(3)) / 2;
+        const p1 = `${this.x},${this.y - height / 2}`;
+        const p2 = `${this.x - this.size / 2},${this.y + height / 2}`;
+        const p3 = `${this.x + this.size / 2},${this.y + height / 2}`;
+        return `<polygon points="${p1} ${p2} ${p3}" fill="${this.fillColor}" stroke="${this.strokeColor}" stroke-width="${this.strokeWidth}" transform="rotate(${this.rotation} ${this.x} ${this.y})"/>`;
+    }
+
+    static fromJSON(data) {
+        return new Triangle(data.x, data.y, data.size, data);
+    }
+}
+
+export class Arrow extends Shape {
+    constructor(x, y, width, height, properties = {}) {
+        super('arrow', x, y, properties);
+        this.width = width;
+        this.height = height;
+    }
+
+    drawShape(ctx) {
+        ctx.fillStyle = this.fillColor;
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = this.strokeWidth;
+
+        const w = this.width;
+        const h = this.height;
+        const headWidth = w * 0.6;
+        const headHeight = h * 0.4;
+        const bodyHeight = h - headHeight;
+
+        ctx.beginPath();
+        // Start at top of arrow body
+        ctx.moveTo(-w / 6, -h / 2);
+        // Right side of body
+        ctx.lineTo(w / 6, -h / 2);
+        // Right side to arrow head
+        ctx.lineTo(w / 6, -h / 2 + bodyHeight);
+        // Right point of arrow head
+        ctx.lineTo(headWidth / 2, -h / 2 + bodyHeight);
+        // Tip of arrow
+        ctx.lineTo(0, h / 2);
+        // Left point of arrow head
+        ctx.lineTo(-headWidth / 2, -h / 2 + bodyHeight);
+        // Left side to arrow head
+        ctx.lineTo(-w / 6, -h / 2 + bodyHeight);
+        ctx.closePath();
+        ctx.fill();
+        if (this.strokeWidth > 0) {
+            ctx.stroke();
+        }
+    }
+
+    containsPoint(px, py) {
+        const dx = px - this.x;
+        const dy = py - this.y;
+
+        // Rotate point back
+        const cos = Math.cos(-this.rotation * Math.PI / 180);
+        const sin = Math.sin(-this.rotation * Math.PI / 180);
+        const rx = dx * cos - dy * sin;
+        const ry = dx * sin + dy * cos;
+
+        return Math.abs(rx) <= this.width / 2 && Math.abs(ry) <= this.height / 2;
+    }
+
+    getBounds() {
+        return {
+            x: this.x - this.width / 2,
+            y: this.y - this.height / 2,
+            width: this.width,
+            height: this.height
+        };
+    }
+
+    toJSON() {
+        return {
+            ...super.toJSON(),
+            width: this.width,
+            height: this.height
+        };
+    }
+
+    toSVG() {
+        const w = this.width;
+        const h = this.height;
+        const headWidth = w * 0.6;
+        const headHeight = h * 0.4;
+        const bodyHeight = h - headHeight;
+        const x = this.x, y = this.y;
+
+        const points = `${x - w/6},${y - h/2} ${x + w/6},${y - h/2} ${x + w/6},${y - h/2 + bodyHeight} ${x + headWidth/2},${y - h/2 + bodyHeight} ${x},${y + h/2} ${x - headWidth/2},${y - h/2 + bodyHeight} ${x - w/6},${y - h/2 + bodyHeight}`;
+        return `<polygon points="${points}" fill="${this.fillColor}" stroke="${this.strokeColor}" stroke-width="${this.strokeWidth}" transform="rotate(${this.rotation} ${x} ${y})"/>`;
+    }
+
+    static fromJSON(data) {
+        return new Arrow(data.x, data.y, data.width, data.height, data);
     }
 }

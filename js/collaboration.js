@@ -301,12 +301,15 @@ export class Collaboration {
     }
 
     getShapeClass(type) {
-        const { Rectangle, Circle, Line, Text } = window;
+        const { Rectangle, Circle, Line, Text, Star, Triangle, Arrow } = window;
         switch (type) {
             case 'rectangle': return Rectangle;
             case 'circle': return Circle;
             case 'line': return Line;
             case 'text': return Text;
+            case 'star': return Star;
+            case 'triangle': return Triangle;
+            case 'arrow': return Arrow;
             default: return null;
         }
     }
