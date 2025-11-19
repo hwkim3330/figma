@@ -141,8 +141,7 @@ export class CanvasEngine {
         if (Array.isArray(selection)) {
             // Draw selection for each shape
             selection.forEach(shape => {
-                const bounds = shape.getBounds();
-                this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+                this.drawShapeOutline(shape);
             });
 
             // Draw combined bounding box
@@ -152,11 +151,11 @@ export class CanvasEngine {
                 this.ctx.strokeRect(combinedBounds.x, combinedBounds.y, combinedBounds.width, combinedBounds.height);
             }
         } else {
-            // Single selection
-            const bounds = selection.getBounds();
-            this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            // Single selection - draw shape outline
+            this.drawShapeOutline(selection);
 
             // Draw resize handles (Figma-style squares)
+            const bounds = selection.getBounds();
             const handleSize = 8 / this.zoom;
             const handles = this.getHandlePositions(bounds);
 
@@ -193,6 +192,101 @@ export class CanvasEngine {
             this.ctx.strokeStyle = '#0d99ff';
             this.ctx.lineWidth = 1 / this.zoom;
             this.ctx.stroke();
+        }
+
+        this.ctx.restore();
+    }
+
+    drawShapeOutline(shape) {
+        this.ctx.save();
+        this.ctx.strokeStyle = '#0d99ff';
+        this.ctx.lineWidth = 1.5 / this.zoom;
+        this.ctx.setLineDash([]);
+
+        // Move to shape position and apply rotation
+        this.ctx.translate(shape.x, shape.y);
+        this.ctx.rotate(shape.rotation * Math.PI / 180);
+
+        switch (shape.type) {
+            case 'star':
+                // Draw star outline
+                this.ctx.beginPath();
+                for (let i = 0; i < shape.points * 2; i++) {
+                    const angle = (Math.PI / shape.points) * i - Math.PI / 2;
+                    const radius = i % 2 === 0 ? shape.outerRadius : shape.innerRadius;
+                    const px = Math.cos(angle) * radius;
+                    const py = Math.sin(angle) * radius;
+                    if (i === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'triangle':
+                // Draw triangle outline
+                const height = (shape.size * Math.sqrt(3)) / 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -height / 2);
+                this.ctx.lineTo(-shape.size / 2, height / 2);
+                this.ctx.lineTo(shape.size / 2, height / 2);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'circle':
+                // Draw circle outline
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, shape.radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+                break;
+
+            case 'arrow':
+                // Draw arrow outline
+                const w = shape.width;
+                const h = shape.height;
+                const headWidth = w * 0.6;
+                const headHeight = h * 0.4;
+                const bodyHeight = h - headHeight;
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(-w / 6, -h / 2);
+                this.ctx.lineTo(w / 6, -h / 2);
+                this.ctx.lineTo(w / 6, -h / 2 + bodyHeight);
+                this.ctx.lineTo(headWidth / 2, -h / 2 + bodyHeight);
+                this.ctx.lineTo(0, h / 2);
+                this.ctx.lineTo(-headWidth / 2, -h / 2 + bodyHeight);
+                this.ctx.lineTo(-w / 6, -h / 2 + bodyHeight);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'line':
+                // Draw line with end caps
+                this.ctx.rotate(-shape.rotation * Math.PI / 180);
+                this.ctx.translate(-shape.x, -shape.y);
+                this.ctx.beginPath();
+                this.ctx.moveTo(shape.x1, shape.y1);
+                this.ctx.lineTo(shape.x2, shape.y2);
+                this.ctx.stroke();
+                // Draw end caps
+                this.ctx.beginPath();
+                this.ctx.arc(shape.x1, shape.y1, 3 / this.zoom, 0, Math.PI * 2);
+                this.ctx.arc(shape.x2, shape.y2, 3 / this.zoom, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#0d99ff';
+                this.ctx.fill();
+                break;
+
+            default:
+                // Rectangle, text, and others - draw bounding box
+                this.ctx.rotate(-shape.rotation * Math.PI / 180);
+                this.ctx.translate(-shape.x, -shape.y);
+                const bounds = shape.getBounds();
+                this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+                break;
         }
 
         this.ctx.restore();

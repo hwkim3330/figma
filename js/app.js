@@ -44,6 +44,8 @@ class DesignApp {
         this.strokeWidth = 1;
 
         this.clipboard = null;
+        this.isSpacePressed = false;
+        this.tempCursor = null;
 
         this.init();
     }
@@ -230,6 +232,15 @@ class DesignApp {
 
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
+            // Space for pan mode
+            if (e.code === 'Space' && !this.isSpacePressed && !this.textEditor?.isActive()) {
+                e.preventDefault();
+                this.isSpacePressed = true;
+                this.tempCursor = this.engine.canvas.style.cursor;
+                this.engine.canvas.style.cursor = 'grab';
+                return;
+            }
+
             // Undo/Redo
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z') {
@@ -330,6 +341,19 @@ class DesignApp {
                 this.engine.deselectAll();
                 this.layerManager.update();
                 this.updateProperties(null);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            // Release space for pan mode
+            if (e.code === 'Space' && this.isSpacePressed) {
+                this.isSpacePressed = false;
+                if (this.tempCursor) {
+                    this.engine.canvas.style.cursor = this.tempCursor;
+                    this.tempCursor = null;
+                } else {
+                    this.updateCursor();
+                }
             }
         });
     }
@@ -554,6 +578,14 @@ class DesignApp {
         const y = e.clientY - rect.top;
         const canvasPos = this.engine.screenToCanvas(x, y);
 
+        // Space + drag for panning
+        if (this.isSpacePressed) {
+            this.isPanning = true;
+            this.panStart = { x: e.clientX, y: e.clientY };
+            this.engine.canvas.style.cursor = 'grabbing';
+            return;
+        }
+
         if (this.currentTool === 'select') {
             // Check for resize/rotation handles first
             const handle = this.engine.getHandleAt(canvasPos.x, canvasPos.y);
@@ -705,9 +737,10 @@ class DesignApp {
             const dx = canvasPos.x - this.resizeStart.x;
             const dy = canvasPos.y - this.resizeStart.y;
             const shape = this.engine.selectedShape;
+            const maintainRatio = e.shiftKey;
 
             if (shape.type === 'rectangle' || shape.type === 'arrow') {
-                this.resizeRectangle(shape, this.resizeHandle.type, dx, dy);
+                this.resizeRectangle(shape, this.resizeHandle.type, dx, dy, maintainRatio);
             } else if (shape.type === 'circle') {
                 this.resizeCircle(shape, this.resizeHandle.type, dx, dy);
             } else if (shape.type === 'star') {
@@ -756,18 +789,40 @@ class DesignApp {
         if (this.isDrawing && this.tempShape && this.drawStart) {
             switch (this.currentTool) {
                 case 'rectangle':
-                    const width = canvasPos.x - this.drawStart.x;
-                    const height = canvasPos.y - this.drawStart.y;
-                    this.tempShape.x = this.drawStart.x + width / 2;
-                    this.tempShape.y = this.drawStart.y + height / 2;
-                    this.tempShape.width = Math.abs(width);
-                    this.tempShape.height = Math.abs(height);
+                    let width = canvasPos.x - this.drawStart.x;
+                    let height = canvasPos.y - this.drawStart.y;
+
+                    // Shift for square
+                    if (e.shiftKey) {
+                        const size = Math.max(Math.abs(width), Math.abs(height));
+                        width = width < 0 ? -size : size;
+                        height = height < 0 ? -size : size;
+                    }
+
+                    // Alt for center-based drawing
+                    if (e.altKey) {
+                        this.tempShape.x = this.drawStart.x;
+                        this.tempShape.y = this.drawStart.y;
+                        this.tempShape.width = Math.abs(width) * 2;
+                        this.tempShape.height = Math.abs(height) * 2;
+                    } else {
+                        this.tempShape.x = this.drawStart.x + width / 2;
+                        this.tempShape.y = this.drawStart.y + height / 2;
+                        this.tempShape.width = Math.abs(width);
+                        this.tempShape.height = Math.abs(height);
+                    }
                     break;
                 case 'circle':
-                    const radius = Math.sqrt(
+                    let radius = Math.sqrt(
                         Math.pow(canvasPos.x - this.drawStart.x, 2) +
                         Math.pow(canvasPos.y - this.drawStart.y, 2)
                     );
+
+                    // Alt for center-based drawing
+                    if (e.altKey) {
+                        radius *= 2;
+                    }
+
                     this.tempShape.radius = radius;
                     break;
                 case 'line':
@@ -792,12 +847,21 @@ class DesignApp {
                     this.tempShape.innerRadius = starRadius * 0.4;
                     break;
                 case 'arrow':
-                    const arrowWidth = canvasPos.x - this.drawStart.x;
-                    const arrowHeight = canvasPos.y - this.drawStart.y;
-                    this.tempShape.x = this.drawStart.x + arrowWidth / 2;
-                    this.tempShape.y = this.drawStart.y + arrowHeight / 2;
-                    this.tempShape.width = Math.abs(arrowWidth);
-                    this.tempShape.height = Math.abs(arrowHeight);
+                    let arrowWidth = canvasPos.x - this.drawStart.x;
+                    let arrowHeight = canvasPos.y - this.drawStart.y;
+
+                    // Alt for center-based drawing
+                    if (e.altKey) {
+                        this.tempShape.x = this.drawStart.x;
+                        this.tempShape.y = this.drawStart.y;
+                        this.tempShape.width = Math.abs(arrowWidth) * 2;
+                        this.tempShape.height = Math.abs(arrowHeight) * 2;
+                    } else {
+                        this.tempShape.x = this.drawStart.x + arrowWidth / 2;
+                        this.tempShape.y = this.drawStart.y + arrowHeight / 2;
+                        this.tempShape.width = Math.abs(arrowWidth);
+                        this.tempShape.height = Math.abs(arrowHeight);
+                    }
                     break;
             }
             this.engine.render();
@@ -835,6 +899,17 @@ class DesignApp {
     }
 
     handleMouseUp(e) {
+        if (this.isPanning) {
+            this.isPanning = false;
+            this.panStart = null;
+            if (this.isSpacePressed) {
+                this.engine.canvas.style.cursor = 'grab';
+            } else {
+                this.updateCursor();
+            }
+            return;
+        }
+
         if (this.isRotating) {
             this.isRotating = false;
             this.rotationStart = null;
@@ -1178,49 +1253,104 @@ class DesignApp {
         }
     }
 
-    resizeRectangle(shape, handleType, dx, dy) {
+    resizeRectangle(shape, handleType, dx, dy, maintainRatio = false) {
         const start = this.resizeStart;
+        const ratio = start.shapeWidth / start.shapeHeight;
 
         switch (handleType) {
             case 'se': // bottom-right
-                shape.width = Math.max(10, start.shapeWidth + dx);
-                shape.height = Math.max(10, start.shapeHeight + dy);
-                shape.x = start.shapeX + dx / 2;
-                shape.y = start.shapeY + dy / 2;
+                let newWidth = Math.max(10, start.shapeWidth + dx);
+                let newHeight = Math.max(10, start.shapeHeight + dy);
+
+                if (maintainRatio) {
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const sign = (dx + dy) >= 0 ? 1 : -1;
+                    newWidth = Math.max(10, start.shapeWidth + sign * distance);
+                    newHeight = newWidth / ratio;
+                }
+
+                shape.width = newWidth;
+                shape.height = newHeight;
+                shape.x = start.shapeX + (newWidth - start.shapeWidth) / 2;
+                shape.y = start.shapeY + (newHeight - start.shapeHeight) / 2;
                 break;
             case 'nw': // top-left
-                shape.width = Math.max(10, start.shapeWidth - dx);
-                shape.height = Math.max(10, start.shapeHeight - dy);
-                shape.x = start.shapeX + dx / 2;
-                shape.y = start.shapeY + dy / 2;
+                let nwWidth = Math.max(10, start.shapeWidth - dx);
+                let nwHeight = Math.max(10, start.shapeHeight - dy);
+
+                if (maintainRatio) {
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const sign = (dx + dy) >= 0 ? -1 : 1;
+                    nwWidth = Math.max(10, start.shapeWidth + sign * distance);
+                    nwHeight = nwWidth / ratio;
+                }
+
+                shape.width = nwWidth;
+                shape.height = nwHeight;
+                shape.x = start.shapeX - (nwWidth - start.shapeWidth) / 2;
+                shape.y = start.shapeY - (nwHeight - start.shapeHeight) / 2;
                 break;
             case 'ne': // top-right
-                shape.width = Math.max(10, start.shapeWidth + dx);
-                shape.height = Math.max(10, start.shapeHeight - dy);
-                shape.x = start.shapeX + dx / 2;
-                shape.y = start.shapeY + dy / 2;
+                let neWidth = Math.max(10, start.shapeWidth + dx);
+                let neHeight = Math.max(10, start.shapeHeight - dy);
+
+                if (maintainRatio) {
+                    neWidth = Math.max(10, start.shapeWidth + dx);
+                    neHeight = neWidth / ratio;
+                    dy = start.shapeHeight - neHeight;
+                }
+
+                shape.width = neWidth;
+                shape.height = neHeight;
+                shape.x = start.shapeX + (neWidth - start.shapeWidth) / 2;
+                shape.y = start.shapeY - (neHeight - start.shapeHeight) / 2;
                 break;
             case 'sw': // bottom-left
-                shape.width = Math.max(10, start.shapeWidth - dx);
-                shape.height = Math.max(10, start.shapeHeight + dy);
-                shape.x = start.shapeX + dx / 2;
-                shape.y = start.shapeY + dy / 2;
+                let swWidth = Math.max(10, start.shapeWidth - dx);
+                let swHeight = Math.max(10, start.shapeHeight + dy);
+
+                if (maintainRatio) {
+                    swWidth = Math.max(10, start.shapeWidth - dx);
+                    swHeight = swWidth / ratio;
+                    dy = swHeight - start.shapeHeight;
+                }
+
+                shape.width = swWidth;
+                shape.height = swHeight;
+                shape.x = start.shapeX - (swWidth - start.shapeWidth) / 2;
+                shape.y = start.shapeY + (swHeight - start.shapeHeight) / 2;
                 break;
             case 'e': // right
                 shape.width = Math.max(10, start.shapeWidth + dx);
-                shape.x = start.shapeX + dx / 2;
+                if (maintainRatio) {
+                    shape.height = shape.width / ratio;
+                }
+                shape.x = start.shapeX + (shape.width - start.shapeWidth) / 2;
+                shape.y = start.shapeY + (shape.height - start.shapeHeight) / 2;
                 break;
             case 'w': // left
                 shape.width = Math.max(10, start.shapeWidth - dx);
-                shape.x = start.shapeX + dx / 2;
+                if (maintainRatio) {
+                    shape.height = shape.width / ratio;
+                }
+                shape.x = start.shapeX - (shape.width - start.shapeWidth) / 2;
+                shape.y = start.shapeY - (shape.height - start.shapeHeight) / 2;
                 break;
             case 'n': // top
                 shape.height = Math.max(10, start.shapeHeight - dy);
-                shape.y = start.shapeY + dy / 2;
+                if (maintainRatio) {
+                    shape.width = shape.height * ratio;
+                }
+                shape.x = start.shapeX + (shape.width - start.shapeWidth) / 2;
+                shape.y = start.shapeY - (shape.height - start.shapeHeight) / 2;
                 break;
             case 's': // bottom
                 shape.height = Math.max(10, start.shapeHeight + dy);
-                shape.y = start.shapeY + dy / 2;
+                if (maintainRatio) {
+                    shape.width = shape.height * ratio;
+                }
+                shape.x = start.shapeX + (shape.width - start.shapeWidth) / 2;
+                shape.y = start.shapeY + (shape.height - start.shapeHeight) / 2;
                 break;
         }
     }
