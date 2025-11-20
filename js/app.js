@@ -3,6 +3,9 @@ import { History, createAddShapeAction, createRemoveShapeAction, createModifySha
 import { Collaboration } from './collaboration.js';
 import { LayerManager } from './layers.js';
 import { TextEditor } from './text-editor.js';
+import { Connector } from './connector.js';
+import { Diamond, Parallelogram, Cylinder, Cloud, Hexagon } from './diagram-shapes.js';
+import { LayoutEngine } from './layout-engine.js';
 
 // Export shape classes to window for collaboration
 window.Rectangle = Rectangle;
@@ -12,6 +15,12 @@ window.Text = Text;
 window.Star = Star;
 window.Triangle = Triangle;
 window.Arrow = Arrow;
+window.Connector = Connector;
+window.Diamond = Diamond;
+window.Parallelogram = Parallelogram;
+window.Cylinder = Cylinder;
+window.Cloud = Cloud;
+window.Hexagon = Hexagon;
 
 class DesignApp {
     constructor() {
@@ -19,7 +28,10 @@ class DesignApp {
         this.history = new History();
         this.collaboration = new Collaboration(this.engine);
         this.layerManager = new LayerManager(this.engine, 'layers-panel');
+        this.layoutEngine = new LayoutEngine(this.engine);
         this.textEditor = null; // Will be initialized after collaboration
+        this.connectMode = false;  // For connector tool
+        this.connectStart = null;
 
         this.currentTool = 'select';
         this.isDrawing = false;
@@ -122,6 +134,27 @@ class DesignApp {
                 this.history.push(action);
                 this.collaboration.broadcastShapeRemove(shape);
             }
+        });
+
+        // Layout tools
+        document.getElementById('align-left-btn').addEventListener('click', () => {
+            this.layoutEngine.alignLeft();
+        });
+
+        document.getElementById('align-center-btn').addEventListener('click', () => {
+            this.layoutEngine.alignCenterVertical();
+        });
+
+        document.getElementById('align-right-btn').addEventListener('click', () => {
+            this.layoutEngine.alignRight();
+        });
+
+        document.getElementById('distribute-h-btn').addEventListener('click', () => {
+            this.layoutEngine.distributeHorizontally();
+        });
+
+        document.getElementById('distribute-v-btn').addEventListener('click', () => {
+            this.layoutEngine.distributeVertically();
         });
 
         this.updateUndoRedoButtons();
@@ -693,6 +726,60 @@ class DesignApp {
                         strokeWidth: this.strokeWidth
                     });
                     break;
+                case 'diamond':
+                    this.tempShape = new Diamond(canvasPos.x, canvasPos.y, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'parallelogram':
+                    this.tempShape = new Parallelogram(canvasPos.x, canvasPos.y, 0, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'hexagon':
+                    this.tempShape = new Hexagon(canvasPos.x, canvasPos.y, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'cylinder':
+                    this.tempShape = new Cylinder(canvasPos.x, canvasPos.y, 0, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'cloud':
+                    this.tempShape = new Cloud(canvasPos.x, canvasPos.y, 0, 0, {
+                        fillColor: this.fillColor,
+                        strokeColor: this.strokeColor,
+                        strokeWidth: this.strokeWidth
+                    });
+                    break;
+                case 'connector':
+                    // Connector mode - click on shapes to connect
+                    const clickedShape = this.engine.getShapeAt(x, y);
+                    if (clickedShape && clickedShape.type !== 'connector') {
+                        if (!this.connectStart) {
+                            this.connectStart = clickedShape;
+                            console.log('Connector: Start shape selected');
+                        } else {
+                            // Create connector
+                            const connector = new Connector(this.connectStart, clickedShape, {
+                                strokeColor: this.strokeColor,
+                                strokeWidth: this.strokeWidth
+                            });
+                            this.engine.addShape(connector);
+                            this.connectStart = null;
+                            console.log('Connector created');
+                        }
+                    }
+                    return;  // Don't add temp shape for connector
             }
 
             if (this.tempShape) {
@@ -861,6 +948,32 @@ class DesignApp {
                         this.tempShape.y = this.drawStart.y + arrowHeight / 2;
                         this.tempShape.width = Math.abs(arrowWidth);
                         this.tempShape.height = Math.abs(arrowHeight);
+                    }
+                    break;
+                case 'diamond':
+                case 'hexagon':
+                    const diagSize = Math.sqrt(
+                        Math.pow(canvasPos.x - this.drawStart.x, 2) +
+                        Math.pow(canvasPos.y - this.drawStart.y, 2)
+                    ) * 2;
+                    this.tempShape.size = diagSize;
+                    break;
+                case 'parallelogram':
+                case 'cylinder':
+                case 'cloud':
+                    let diagWidth = canvasPos.x - this.drawStart.x;
+                    let diagHeight = canvasPos.y - this.drawStart.y;
+
+                    if (e.altKey) {
+                        this.tempShape.x = this.drawStart.x;
+                        this.tempShape.y = this.drawStart.y;
+                        this.tempShape.width = Math.abs(diagWidth) * 2;
+                        this.tempShape.height = Math.abs(diagHeight) * 2;
+                    } else {
+                        this.tempShape.x = this.drawStart.x + diagWidth / 2;
+                        this.tempShape.y = this.drawStart.y + diagHeight / 2;
+                        this.tempShape.width = Math.abs(diagWidth);
+                        this.tempShape.height = Math.abs(diagHeight);
                     }
                     break;
             }
