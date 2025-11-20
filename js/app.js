@@ -1243,13 +1243,18 @@ class DesignApp {
     }
 
     selectAll() {
-        // For now, just select the last shape
-        // TODO: Implement proper multi-selection
         if (this.engine.shapes.length > 0) {
-            const lastShape = this.engine.shapes[this.engine.shapes.length - 1];
-            this.engine.selectShape(lastShape);
+            // Select all shapes using the existing selectMultiple method
+            this.engine.selectMultiple(this.engine.shapes);
             this.layerManager.update();
-            this.updateProperties(lastShape);
+
+            // Update properties for the first selected shape
+            if (this.engine.shapes.length === 1) {
+                this.updateProperties(this.engine.shapes[0]);
+            } else {
+                // For multiple selections, clear individual properties
+                this.updateProperties(null);
+            }
         }
     }
 
