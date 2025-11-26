@@ -6,6 +6,7 @@ import { TextEditor } from './text-editor.js';
 import { Connector } from './connector.js';
 import { Diamond, Parallelogram, Cylinder, Cloud, Hexagon } from './diagram-shapes.js';
 import { LayoutEngine } from './layout-engine.js';
+import { MermaidEditor } from './mermaid-editor.js';
 
 // Export shape classes to window for collaboration
 window.Rectangle = Rectangle;
@@ -30,6 +31,7 @@ class DesignApp {
         this.layerManager = new LayerManager(this.engine, 'layers-panel');
         this.layoutEngine = new LayoutEngine(this.engine);
         this.textEditor = null; // Will be initialized after collaboration
+        this.mermaidEditor = new MermaidEditor(this.engine);
         this.connectMode = false;  // For connector tool
         this.connectStart = null;
 
@@ -70,6 +72,7 @@ class DesignApp {
         this.setupShare();
         this.setupExport();
         this.setupContextMenu();
+        this.setupMermaid();
 
         // Initialize collaboration
         try {
@@ -325,6 +328,10 @@ class DesignApp {
                             this.selectTool('arrow');
                         }
                         break;
+                    case 'm':
+                        // Toggle Mermaid editor
+                        this.mermaidEditor.toggle();
+                        break;
                 }
             }
 
@@ -525,6 +532,16 @@ class DesignApp {
             this.exportJSON();
             exportModal.classList.remove('active');
         });
+    }
+
+    setupMermaid() {
+        // Mermaid button click
+        const mermaidBtn = document.getElementById('mermaid-btn');
+        if (mermaidBtn) {
+            mermaidBtn.addEventListener('click', () => {
+                this.mermaidEditor.toggle();
+            });
+        }
     }
 
     setupContextMenu() {
