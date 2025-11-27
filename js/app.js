@@ -6,7 +6,6 @@ import { TextEditor } from './text-editor.js';
 import { Connector } from './connector.js';
 import { Diamond, Parallelogram, Cylinder, Cloud, Hexagon } from './diagram-shapes.js';
 import { LayoutEngine } from './layout-engine.js';
-import { MermaidEditor } from './mermaid-editor.js';
 
 // Export shape classes to window for collaboration
 window.Rectangle = Rectangle;
@@ -30,12 +29,12 @@ class DesignApp {
         this.collaboration = new Collaboration(this.engine);
         this.layerManager = new LayerManager(this.engine, 'layers-panel');
         this.layoutEngine = new LayoutEngine(this.engine);
-        this.textEditor = null; // Will be initialized after collaboration
-        this.mermaidEditor = new MermaidEditor(this.engine);
-        this.connectMode = false;  // For connector tool
+        this.textEditor = null;
+        this.connectMode = false;
         this.connectStart = null;
 
         this.currentTool = 'select';
+        this.currentTab = 'design';
         this.isDrawing = false;
         this.drawStart = null;
         this.tempShape = null;
@@ -61,10 +60,24 @@ class DesignApp {
         this.isSpacePressed = false;
         this.tempCursor = null;
 
+        // Mermaid state
+        this.mermaidHistory = [];
+        this.mermaidHistoryIndex = -1;
+        this.mermaidAutoRender = true;
+        this.mermaidRenderTimeout = null;
+        this.mermaidZoom = 1;
+        this.mermaidPanX = 0;
+        this.mermaidPanY = 0;
+        this.mermaidTheme = 'default';
+
+        // Dark theme state
+        this.isDarkTheme = false;
+
         this.init();
     }
 
     async init() {
+        this.setupTabs();
         this.setupToolbar();
         this.setupCanvas();
         this.setupProperties();
@@ -73,6 +86,7 @@ class DesignApp {
         this.setupExport();
         this.setupContextMenu();
         this.setupMermaid();
+        this.setupThemeToggle();
 
         // Initialize collaboration
         try {
@@ -96,6 +110,71 @@ class DesignApp {
         };
 
         console.log('DesignFlow initialized!');
+    }
+
+    setupTabs() {
+        const tabs = document.querySelectorAll('.main-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                this.switchTab(tabId);
+            });
+        });
+    }
+
+    switchTab(tabId) {
+        this.currentTab = tabId;
+
+        // Update tab buttons
+        document.querySelectorAll('.main-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabId);
+        });
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === `${tabId}-tab`);
+        });
+
+        // Initialize mermaid if switching to mermaid tab
+        if (tabId === 'mermaid' && !this.mermaidInitialized) {
+            this.initMermaidEditor();
+        }
+    }
+
+    setupThemeToggle() {
+        const themeBtn = document.getElementById('theme-toggle-btn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                this.toggleTheme();
+            });
+        }
+
+        // Check for saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            this.toggleTheme();
+        }
+    }
+
+    toggleTheme() {
+        this.isDarkTheme = !this.isDarkTheme;
+        document.body.classList.toggle('dark-theme', this.isDarkTheme);
+
+        // Toggle icons
+        const sunIcon = document.querySelector('.sun-icon');
+        const moonIcon = document.querySelector('.moon-icon');
+        if (sunIcon && moonIcon) {
+            sunIcon.style.display = this.isDarkTheme ? 'none' : 'block';
+            moonIcon.style.display = this.isDarkTheme ? 'block' : 'none';
+        }
+
+        // Save preference
+        localStorage.setItem('theme', this.isDarkTheme ? 'dark' : 'light');
+
+        // Re-render mermaid if active
+        if (this.currentTab === 'mermaid') {
+            this.renderMermaid();
+        }
     }
 
     setupToolbar() {
@@ -172,7 +251,6 @@ class DesignApp {
         canvas.addEventListener('wheel', (e) => this.handleWheel(e));
         canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
 
-        // Context menu
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             if (this.engine.selectedShape) {
@@ -180,7 +258,6 @@ class DesignApp {
             }
         });
 
-        // Hide context menu on click outside
         document.addEventListener('click', () => {
             this.hideContextMenu();
         });
@@ -281,10 +358,18 @@ class DesignApp {
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z') {
                     e.preventDefault();
-                    this.undo();
+                    if (this.currentTab === 'mermaid') {
+                        this.mermaidUndo();
+                    } else {
+                        this.undo();
+                    }
                 } else if (e.key === 'y') {
                     e.preventDefault();
-                    this.redo();
+                    if (this.currentTab === 'mermaid') {
+                        this.mermaidRedo();
+                    } else {
+                        this.redo();
+                    }
                 } else if (e.key === 'c') {
                     e.preventDefault();
                     this.copySelected();
@@ -300,8 +385,8 @@ class DesignApp {
                 }
             }
 
-            // Tool shortcuts
-            if (!e.ctrlKey && !e.metaKey) {
+            // Tool shortcuts (only in design tab)
+            if (this.currentTab === 'design' && !e.ctrlKey && !e.metaKey) {
                 switch (e.key.toLowerCase()) {
                     case 'v':
                         this.selectTool('select');
@@ -328,30 +413,32 @@ class DesignApp {
                             this.selectTool('arrow');
                         }
                         break;
-                    case 'm':
-                        // Toggle Mermaid editor
-                        this.mermaidEditor.toggle();
-                        break;
                 }
             }
 
-            // Delete - only if not editing text
+            // Tab switching
+            if (e.key === '1' && e.altKey) {
+                e.preventDefault();
+                this.switchTab('design');
+            } else if (e.key === '2' && e.altKey) {
+                e.preventDefault();
+                this.switchTab('mermaid');
+            }
+
+            // Delete
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                // Don't delete shapes if editing text
                 if (this.textEditor && this.textEditor.isActive()) {
                     return;
                 }
 
-                // Don't delete on Backspace if in an input field
                 if (e.key === 'Backspace' && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
                     return;
                 }
 
-                if (this.engine.selectedShape) {
+                if (this.currentTab === 'design' && this.engine.selectedShape) {
                     e.preventDefault();
                     const shapes = this.engine.getSelectedShapes();
 
-                    // Delete all selected shapes
                     shapes.forEach(shape => {
                         this.engine.removeShape(shape);
                         const action = createRemoveShapeAction(this.engine, shape);
@@ -385,7 +472,6 @@ class DesignApp {
         });
 
         document.addEventListener('keyup', (e) => {
-            // Release space for pan mode
             if (e.code === 'Space' && this.isSpacePressed) {
                 this.isSpacePressed = false;
                 if (this.tempCursor) {
@@ -417,33 +503,30 @@ class DesignApp {
             }
         });
 
-        // Copy ID button
         document.getElementById('copy-id-btn').addEventListener('click', async () => {
             const id = this.collaboration.myId;
             if (id) {
                 try {
                     await navigator.clipboard.writeText(id);
-                    this.showCopyFeedback('copy-id-btn');
+                    this.showToast('Copied to clipboard');
                 } catch (err) {
                     console.error('Failed to copy ID:', err);
                 }
             }
         });
 
-        // Copy URL button
         document.getElementById('copy-url-btn').addEventListener('click', async () => {
             const url = this.collaboration.getShareURL();
             if (url) {
                 try {
                     await navigator.clipboard.writeText(url);
-                    this.showCopyFeedback('copy-url-btn');
+                    this.showToast('Link copied to clipboard');
                 } catch (err) {
                     console.error('Failed to copy URL:', err);
                 }
             }
         });
 
-        // Download QR code button
         document.getElementById('download-qr-btn').addEventListener('click', () => {
             const canvas = document.getElementById('qr-canvas');
             const url = canvas.toDataURL('image/png');
@@ -460,15 +543,13 @@ class DesignApp {
         const shareURL = this.collaboration.getShareURL();
 
         if (!myId) {
-            alert('Collaboration not initialized yet. Please wait...');
+            this.showToast('Collaboration not initialized yet');
             return;
         }
 
-        // Update ID display
         document.getElementById('my-id-display').value = myId;
         document.getElementById('share-url-display').value = shareURL;
 
-        // Generate QR code
         const canvas = document.getElementById('qr-canvas');
         const qr = new QRious({
             element: canvas,
@@ -480,23 +561,6 @@ class DesignApp {
         });
 
         modal.classList.add('active');
-    }
-
-    showCopyFeedback(buttonId) {
-        const btn = document.getElementById(buttonId);
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            Copied!
-        `;
-        btn.style.background = 'var(--accent-green)';
-
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.style.background = '';
-        }, 2000);
     }
 
     setupExport() {
@@ -532,16 +596,6 @@ class DesignApp {
             this.exportJSON();
             exportModal.classList.remove('active');
         });
-    }
-
-    setupMermaid() {
-        // Mermaid button click
-        const mermaidBtn = document.getElementById('mermaid-btn');
-        if (mermaidBtn) {
-            mermaidBtn.addEventListener('click', () => {
-                this.mermaidEditor.toggle();
-            });
-        }
     }
 
     setupContextMenu() {
@@ -582,6 +636,623 @@ class DesignApp {
             this.sendToBack();
             this.hideContextMenu();
         });
+    }
+
+    // ================================
+    // MERMAID EDITOR METHODS
+    // ================================
+
+    setupMermaid() {
+        // Initialize mermaid
+        if (window.mermaid) {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: this.mermaidTheme,
+                securityLevel: 'loose'
+            });
+        }
+
+        // Templates button
+        document.getElementById('mermaid-templates-btn').addEventListener('click', () => {
+            this.showTemplatesModal();
+        });
+
+        // Close templates modal
+        document.getElementById('close-templates-modal').addEventListener('click', () => {
+            document.getElementById('templates-modal').classList.remove('active');
+        });
+
+        // Template search
+        document.getElementById('template-search').addEventListener('input', (e) => {
+            this.filterTemplates(e.target.value);
+        });
+
+        // Code editor
+        const codeEditor = document.getElementById('mermaid-code');
+        codeEditor.addEventListener('input', () => {
+            this.updateLineNumbers();
+            this.saveMermaidHistory();
+            if (this.mermaidAutoRender) {
+                this.debouncedRenderMermaid();
+            }
+        });
+
+        codeEditor.addEventListener('scroll', () => {
+            document.getElementById('line-numbers').scrollTop = codeEditor.scrollTop;
+        });
+
+        codeEditor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = codeEditor.selectionStart;
+                const end = codeEditor.selectionEnd;
+                codeEditor.value = codeEditor.value.substring(0, start) + '    ' + codeEditor.value.substring(end);
+                codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+                this.updateLineNumbers();
+            }
+
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                this.renderMermaid();
+            }
+        });
+
+        // Theme select
+        document.getElementById('mermaid-theme-select').addEventListener('change', (e) => {
+            this.mermaidTheme = e.target.value;
+            this.renderMermaid();
+        });
+
+        // Diagram type select
+        document.getElementById('mermaid-diagram-type').addEventListener('change', (e) => {
+            this.loadDiagramTemplate(e.target.value);
+        });
+
+        // Auto render toggle
+        document.getElementById('mermaid-auto-render').addEventListener('change', (e) => {
+            this.mermaidAutoRender = e.target.checked;
+        });
+
+        // Render button
+        document.getElementById('mermaid-render-btn').addEventListener('click', () => {
+            this.renderMermaid();
+        });
+
+        // Undo/Redo
+        document.getElementById('mermaid-undo-btn').addEventListener('click', () => this.mermaidUndo());
+        document.getElementById('mermaid-redo-btn').addEventListener('click', () => this.mermaidRedo());
+
+        // Zoom controls
+        document.getElementById('mermaid-zoom-in-btn').addEventListener('click', () => this.mermaidZoomIn());
+        document.getElementById('mermaid-zoom-out-btn').addEventListener('click', () => this.mermaidZoomOut());
+        document.getElementById('mermaid-zoom-fit-btn').addEventListener('click', () => this.mermaidZoomFit());
+
+        // Export buttons
+        document.getElementById('mermaid-export-svg-btn').addEventListener('click', () => this.exportMermaidSVG());
+        document.getElementById('mermaid-export-png-btn').addEventListener('click', () => this.exportMermaidPNG());
+        document.getElementById('mermaid-export-pdf-btn').addEventListener('click', () => this.exportMermaidPDF());
+
+        // Copy code
+        document.getElementById('mermaid-copy-btn').addEventListener('click', () => this.copyMermaidCode());
+
+        // Format code
+        document.getElementById('mermaid-format-btn').addEventListener('click', () => this.formatMermaidCode());
+
+        // Fullscreen
+        document.getElementById('mermaid-fullscreen-btn').addEventListener('click', () => {
+            document.querySelector('.mermaid-preview-panel').classList.toggle('fullscreen');
+        });
+
+        // Initialize line numbers
+        this.updateLineNumbers();
+
+        // Populate templates
+        this.populateTemplates();
+    }
+
+    initMermaidEditor() {
+        this.mermaidInitialized = true;
+        // Load default template
+        this.loadDiagramTemplate('flowchart');
+    }
+
+    updateLineNumbers() {
+        const code = document.getElementById('mermaid-code').value;
+        const lines = code.split('\n').length;
+        const lineNumbers = document.getElementById('line-numbers');
+        lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) =>
+            `<div class="line-num">${i + 1}</div>`
+        ).join('');
+    }
+
+    debouncedRenderMermaid() {
+        clearTimeout(this.mermaidRenderTimeout);
+        this.mermaidRenderTimeout = setTimeout(() => this.renderMermaid(), 500);
+    }
+
+    async renderMermaid() {
+        const code = document.getElementById('mermaid-code').value.trim();
+        const output = document.getElementById('mermaid-output');
+        const errorPanel = document.getElementById('mermaid-error-panel');
+
+        if (!code) {
+            output.innerHTML = `<div class="empty-state">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <path d="M12 18v-6"/>
+                    <path d="M8 18v-1"/>
+                    <path d="M16 18v-3"/>
+                </svg>
+                <p>Enter Mermaid code or select a template</p>
+            </div>`;
+            errorPanel.classList.remove('visible');
+            return;
+        }
+
+        if (!window.mermaid) {
+            errorPanel.textContent = 'Mermaid library not loaded';
+            errorPanel.classList.add('visible');
+            return;
+        }
+
+        try {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: this.mermaidTheme,
+                securityLevel: 'loose'
+            });
+
+            const id = 'mermaid-' + Date.now();
+            const { svg } = await mermaid.render(id, code);
+            output.innerHTML = svg;
+            errorPanel.classList.remove('visible');
+
+            // Apply zoom
+            this.applyMermaidZoom();
+        } catch (err) {
+            errorPanel.textContent = err.message || 'Syntax error in diagram';
+            errorPanel.classList.add('visible');
+        }
+    }
+
+    saveMermaidHistory() {
+        const code = document.getElementById('mermaid-code').value;
+
+        if (this.mermaidHistoryIndex < this.mermaidHistory.length - 1) {
+            this.mermaidHistory = this.mermaidHistory.slice(0, this.mermaidHistoryIndex + 1);
+        }
+
+        if (this.mermaidHistory.length > 0 && this.mermaidHistory[this.mermaidHistory.length - 1] === code) {
+            return;
+        }
+
+        this.mermaidHistory.push(code);
+        if (this.mermaidHistory.length > 50) {
+            this.mermaidHistory.shift();
+        }
+        this.mermaidHistoryIndex = this.mermaidHistory.length - 1;
+    }
+
+    mermaidUndo() {
+        if (this.mermaidHistoryIndex > 0) {
+            this.mermaidHistoryIndex--;
+            document.getElementById('mermaid-code').value = this.mermaidHistory[this.mermaidHistoryIndex];
+            this.updateLineNumbers();
+            if (this.mermaidAutoRender) {
+                this.renderMermaid();
+            }
+        }
+    }
+
+    mermaidRedo() {
+        if (this.mermaidHistoryIndex < this.mermaidHistory.length - 1) {
+            this.mermaidHistoryIndex++;
+            document.getElementById('mermaid-code').value = this.mermaidHistory[this.mermaidHistoryIndex];
+            this.updateLineNumbers();
+            if (this.mermaidAutoRender) {
+                this.renderMermaid();
+            }
+        }
+    }
+
+    mermaidZoomIn() {
+        this.mermaidZoom = Math.min(3, this.mermaidZoom + 0.1);
+        document.getElementById('mermaid-zoom-level').textContent = Math.round(this.mermaidZoom * 100) + '%';
+        this.applyMermaidZoom();
+    }
+
+    mermaidZoomOut() {
+        this.mermaidZoom = Math.max(0.1, this.mermaidZoom - 0.1);
+        document.getElementById('mermaid-zoom-level').textContent = Math.round(this.mermaidZoom * 100) + '%';
+        this.applyMermaidZoom();
+    }
+
+    mermaidZoomFit() {
+        this.mermaidZoom = 1;
+        this.mermaidPanX = 0;
+        this.mermaidPanY = 0;
+        document.getElementById('mermaid-zoom-level').textContent = '100%';
+        this.applyMermaidZoom();
+    }
+
+    applyMermaidZoom() {
+        const svg = document.querySelector('#mermaid-output svg');
+        if (svg) {
+            svg.style.transform = `scale(${this.mermaidZoom})`;
+            svg.style.transformOrigin = 'center center';
+        }
+    }
+
+    async copyMermaidCode() {
+        try {
+            await navigator.clipboard.writeText(document.getElementById('mermaid-code').value);
+            this.showToast('Code copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    }
+
+    formatMermaidCode() {
+        const code = document.getElementById('mermaid-code').value;
+        const lines = code.split('\n');
+        let formatted = [];
+        let indent = 0;
+
+        for (let line of lines) {
+            let trimmed = line.trim();
+
+            if (trimmed.match(/^(end|section|else)/i)) {
+                indent = Math.max(0, indent - 1);
+            }
+
+            if (trimmed) {
+                formatted.push('    '.repeat(indent) + trimmed);
+            } else {
+                formatted.push('');
+            }
+
+            if (trimmed.match(/^(subgraph|section|loop|alt|opt|par|critical|break|rect)/i)) {
+                indent++;
+            }
+        }
+
+        document.getElementById('mermaid-code').value = formatted.join('\n');
+        this.updateLineNumbers();
+        this.renderMermaid();
+    }
+
+    exportMermaidSVG() {
+        const svg = document.querySelector('#mermaid-output svg');
+        if (!svg) {
+            this.showToast('No diagram to export');
+            return;
+        }
+
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgData], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.download = `mermaid-diagram-${Date.now()}.svg`;
+        link.href = url;
+        link.click();
+
+        URL.revokeObjectURL(url);
+        this.showToast('SVG exported');
+    }
+
+    exportMermaidPNG() {
+        const svg = document.querySelector('#mermaid-output svg');
+        if (!svg) {
+            this.showToast('No diagram to export');
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const img = new Image();
+
+        const bbox = svg.getBBox();
+        const width = bbox.width || svg.clientWidth || 800;
+        const height = bbox.height || svg.clientHeight || 600;
+
+        const scale = 2;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+
+        img.onload = () => {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const link = document.createElement('a');
+            link.download = `mermaid-diagram-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            this.showToast('PNG exported');
+        };
+
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
+
+    exportMermaidPDF() {
+        const svg = document.querySelector('#mermaid-output svg');
+        if (!svg) {
+            this.showToast('No diagram to export');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        const svgData = new XMLSerializer().serializeToString(svg);
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Mermaid Diagram</title>
+                <style>
+                    body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                    svg { max-width: 100%; height: auto; }
+                </style>
+            </head>
+            <body>
+                ${svgData}
+                <script>window.onload = function() { window.print(); window.close(); }<\/script>
+            </body>
+            </html>
+        `);
+
+        this.showToast('Opening print dialog');
+    }
+
+    populateTemplates() {
+        const templates = this.getMermaidTemplates();
+        const grid = document.getElementById('templates-grid');
+
+        grid.innerHTML = Object.entries(templates).map(([key, template]) => `
+            <div class="template-card" data-template="${key}">
+                <div class="template-icon">${template.icon}</div>
+                <div class="template-name">${template.name}</div>
+            </div>
+        `).join('');
+
+        // Add click handlers
+        grid.querySelectorAll('.template-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const key = card.dataset.template;
+                const template = templates[key];
+                if (template) {
+                    document.getElementById('mermaid-code').value = template.code;
+                    this.updateLineNumbers();
+                    this.saveMermaidHistory();
+                    this.renderMermaid();
+                    document.getElementById('templates-modal').classList.remove('active');
+                }
+            });
+        });
+    }
+
+    showTemplatesModal() {
+        document.getElementById('templates-modal').classList.add('active');
+    }
+
+    filterTemplates(query) {
+        const cards = document.querySelectorAll('.template-card');
+        const lowerQuery = query.toLowerCase();
+
+        cards.forEach(card => {
+            const name = card.querySelector('.template-name').textContent.toLowerCase();
+            card.style.display = name.includes(lowerQuery) ? 'flex' : 'none';
+        });
+    }
+
+    loadDiagramTemplate(type) {
+        const templates = this.getMermaidTemplates();
+        const template = templates[type];
+        if (template) {
+            document.getElementById('mermaid-code').value = template.code;
+            this.updateLineNumbers();
+            this.saveMermaidHistory();
+            this.renderMermaid();
+        }
+    }
+
+    getMermaidTemplates() {
+        return {
+            flowchart: {
+                name: 'Flowchart',
+                icon: '📊',
+                code: `flowchart TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+    C --> E[End]`
+            },
+            sequence: {
+                name: 'Sequence',
+                icon: '🔄',
+                code: `sequenceDiagram
+    participant A as Alice
+    participant B as Bob
+    participant C as Charlie
+
+    A->>B: Hello Bob!
+    B->>C: Hello Charlie!
+    C-->>B: Hi Bob!
+    B-->>A: Hi Alice!
+
+    Note over A,C: This is a note`
+            },
+            class: {
+                name: 'Class Diagram',
+                icon: '📦',
+                code: `classDiagram
+    class Animal {
+        +String name
+        +int age
+        +makeSound()
+    }
+    class Dog {
+        +String breed
+        +bark()
+    }
+    class Cat {
+        +String color
+        +meow()
+    }
+    Animal <|-- Dog
+    Animal <|-- Cat`
+            },
+            state: {
+                name: 'State Diagram',
+                icon: '🔵',
+                code: `stateDiagram-v2
+    [*] --> Idle
+    Idle --> Processing : Start
+    Processing --> Success : Complete
+    Processing --> Error : Fail
+    Success --> [*]
+    Error --> Idle : Retry`
+            },
+            er: {
+                name: 'ER Diagram',
+                icon: '🗃️',
+                code: `erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE_ITEM : contains
+    PRODUCT ||--o{ LINE_ITEM : "ordered in"
+    CUSTOMER {
+        string name
+        string email
+        int id PK
+    }
+    ORDER {
+        int id PK
+        date created
+        string status
+    }`
+            },
+            journey: {
+                name: 'User Journey',
+                icon: '🚶',
+                code: `journey
+    title My Working Day
+    section Go to work
+        Make tea: 5: Me
+        Go upstairs: 3: Me
+        Do work: 1: Me, Cat
+    section Go home
+        Go downstairs: 5: Me
+        Sit down: 5: Me`
+            },
+            gantt: {
+                name: 'Gantt Chart',
+                icon: '📅',
+                code: `gantt
+    title Project Schedule
+    dateFormat YYYY-MM-DD
+    section Planning
+        Research      :a1, 2024-01-01, 7d
+        Design        :a2, after a1, 14d
+    section Development
+        Coding        :a3, after a2, 21d
+        Testing       :a4, after a3, 14d
+    section Deployment
+        Release       :a5, after a4, 7d`
+            },
+            pie: {
+                name: 'Pie Chart',
+                icon: '🥧',
+                code: `pie showData
+    title Browser Market Share
+    "Chrome" : 65
+    "Safari" : 19
+    "Firefox" : 10
+    "Edge" : 4
+    "Other" : 2`
+            },
+            mindmap: {
+                name: 'Mind Map',
+                icon: '🧠',
+                code: `mindmap
+    root((Central Idea))
+        Branch 1
+            Sub-topic 1.1
+            Sub-topic 1.2
+        Branch 2
+            Sub-topic 2.1
+            Sub-topic 2.2
+                Detail
+        Branch 3
+            Sub-topic 3.1`
+            },
+            timeline: {
+                name: 'Timeline',
+                icon: '⏱️',
+                code: `timeline
+    title History of Web Development
+    1990 : HTML invented
+    1995 : JavaScript created
+    1996 : CSS introduced
+    2004 : Web 2.0 era begins
+    2010 : HTML5 released
+    2015 : ES6 JavaScript`
+            },
+            gitgraph: {
+                name: 'Git Graph',
+                icon: '🌿',
+                code: `gitGraph
+    commit id: "Initial"
+    branch develop
+    checkout develop
+    commit id: "Feature A"
+    commit id: "Feature B"
+    checkout main
+    merge develop
+    commit id: "Release v1.0"`
+            },
+            quadrant: {
+                name: 'Quadrant',
+                icon: '📈',
+                code: `quadrantChart
+    title Reach and engagement
+    x-axis Low Reach --> High Reach
+    y-axis Low Engagement --> High Engagement
+    quadrant-1 We should expand
+    quadrant-2 Need to promote
+    quadrant-3 Re-evaluate
+    quadrant-4 May be improved
+    Campaign A: [0.3, 0.6]
+    Campaign B: [0.45, 0.23]
+    Campaign C: [0.57, 0.69]
+    Campaign D: [0.78, 0.34]`
+            },
+            sankey: {
+                name: 'Sankey',
+                icon: '🌊',
+                code: `sankey-beta
+
+Agricultural 'waste',Bio-conversion,124.729
+Bio-conversion,Liquid,0.597
+Bio-conversion,Losses,26.862
+Bio-conversion,Solid,280.322
+Bio-conversion,Gas,81.144`
+            },
+            xy: {
+                name: 'XY Chart',
+                icon: '📉',
+                code: `xychart-beta
+    title "Sales Revenue"
+    x-axis [jan, feb, mar, apr, may, jun]
+    y-axis "Revenue ($)" 4000 --> 11000
+    bar [5000, 6000, 7500, 8200, 9500, 10500]
+    line [5000, 6000, 7500, 8200, 9500, 10500]`
+            }
+        };
     }
 
     showContextMenu(x, y) {
@@ -628,7 +1299,6 @@ class DesignApp {
         const y = e.clientY - rect.top;
         const canvasPos = this.engine.screenToCanvas(x, y);
 
-        // Space + drag for panning
         if (this.isSpacePressed) {
             this.isPanning = true;
             this.panStart = { x: e.clientX, y: e.clientY };
@@ -637,7 +1307,6 @@ class DesignApp {
         }
 
         if (this.currentTool === 'select') {
-            // Check for resize/rotation handles first
             const handle = this.engine.getHandleAt(canvasPos.x, canvasPos.y);
             if (handle) {
                 if (handle.type === 'rotate') {
@@ -668,7 +1337,6 @@ class DesignApp {
 
             const shape = this.engine.getShapeAt(x, y);
             if (shape) {
-                // Shift+Click for multi-selection
                 const addToSelection = e.shiftKey;
                 this.engine.selectShape(shape, addToSelection);
                 this.layerManager.update();
@@ -678,20 +1346,16 @@ class DesignApp {
                 this.draggedShape = shape;
                 this.dragInitialPos = { x: shape.x, y: shape.y };
             } else {
-                // If not clicking on a shape, start selection box or pan
                 if (e.shiftKey) {
-                    // Start drag selection
                     this.isSelecting = true;
                     this.selectionStart = canvasPos;
                 } else if (e.button === 1 || e.ctrlKey) {
-                    // Middle click or Ctrl+Click for panning
                     this.isPanning = true;
                     this.panStart = { x: e.clientX, y: e.clientY };
                 } else {
                     this.engine.deselectAll();
                     this.layerManager.update();
                     this.updateProperties(null);
-                    // Start selection box
                     this.isSelecting = true;
                     this.selectionStart = canvasPos;
                 }
@@ -700,7 +1364,6 @@ class DesignApp {
             this.isDrawing = true;
             this.drawStart = canvasPos;
 
-            // Create temporary shape for preview
             switch (this.currentTool) {
                 case 'rectangle':
                     this.tempShape = new Rectangle(canvasPos.x, canvasPos.y, 0, 0, {
@@ -779,24 +1442,20 @@ class DesignApp {
                     });
                     break;
                 case 'connector':
-                    // Connector mode - click on shapes to connect
                     const clickedShape = this.engine.getShapeAt(x, y);
                     if (clickedShape && clickedShape.type !== 'connector') {
                         if (!this.connectStart) {
                             this.connectStart = clickedShape;
-                            console.log('Connector: Start shape selected');
                         } else {
-                            // Create connector
                             const connector = new Connector(this.connectStart, clickedShape, {
                                 strokeColor: this.strokeColor,
                                 strokeWidth: this.strokeWidth
                             });
                             this.engine.addShape(connector);
                             this.connectStart = null;
-                            console.log('Connector created');
                         }
                     }
-                    return;  // Don't add temp shape for connector
+                    return;
             }
 
             if (this.tempShape) {
@@ -811,10 +1470,8 @@ class DesignApp {
         const y = e.clientY - rect.top;
         const canvasPos = this.engine.screenToCanvas(x, y);
 
-        // Broadcast cursor position
         this.collaboration.broadcastCursor(canvasPos.x, canvasPos.y);
 
-        // Update cursor based on handles
         if (this.currentTool === 'select' && !this.isDragging && !this.isResizing && !this.isRotating) {
             const handle = this.engine.getHandleAt(canvasPos.x, canvasPos.y);
             if (handle) {
@@ -878,7 +1535,6 @@ class DesignApp {
         }
 
         if (this.isSelecting && this.selectionStart) {
-            // Draw selection box
             this.selectionBox = {
                 x1: this.selectionStart.x,
                 y1: this.selectionStart.y,
@@ -896,14 +1552,12 @@ class DesignApp {
                     let width = canvasPos.x - this.drawStart.x;
                     let height = canvasPos.y - this.drawStart.y;
 
-                    // Shift for square
                     if (e.shiftKey) {
                         const size = Math.max(Math.abs(width), Math.abs(height));
                         width = width < 0 ? -size : size;
                         height = height < 0 ? -size : size;
                     }
 
-                    // Alt for center-based drawing
                     if (e.altKey) {
                         this.tempShape.x = this.drawStart.x;
                         this.tempShape.y = this.drawStart.y;
@@ -922,7 +1576,6 @@ class DesignApp {
                         Math.pow(canvasPos.y - this.drawStart.y, 2)
                     );
 
-                    // Alt for center-based drawing
                     if (e.altKey) {
                         radius *= 2;
                     }
@@ -954,7 +1607,6 @@ class DesignApp {
                     let arrowWidth = canvasPos.x - this.drawStart.x;
                     let arrowHeight = canvasPos.y - this.drawStart.y;
 
-                    // Alt for center-based drawing
                     if (e.altKey) {
                         this.tempShape.x = this.drawStart.x;
                         this.tempShape.y = this.drawStart.y;
@@ -1004,22 +1656,18 @@ class DesignApp {
         const ctx = this.engine.ctx;
         ctx.save();
 
-        // Apply transformations
         ctx.translate(this.engine.canvas.width / 2, this.engine.canvas.height / 2);
         ctx.scale(this.engine.zoom, this.engine.zoom);
         ctx.translate(this.engine.pan.x, this.engine.pan.y);
 
-        // Draw selection rectangle
         const minX = Math.min(this.selectionBox.x1, this.selectionBox.x2);
         const minY = Math.min(this.selectionBox.y1, this.selectionBox.y2);
         const width = Math.abs(this.selectionBox.x2 - this.selectionBox.x1);
         const height = Math.abs(this.selectionBox.y2 - this.selectionBox.y1);
 
-        // Fill
         ctx.fillStyle = 'rgba(13, 153, 255, 0.1)';
         ctx.fillRect(minX, minY, width, height);
 
-        // Border
         ctx.strokeStyle = '#0d99ff';
         ctx.lineWidth = 1 / this.engine.zoom;
         ctx.setLineDash([5 / this.engine.zoom, 5 / this.engine.zoom]);
@@ -1055,19 +1703,12 @@ class DesignApp {
             return;
         }
 
-        if (this.isPanning) {
-            this.isPanning = false;
-            this.panStart = null;
-            return;
-        }
-
         if (this.isSelecting && this.selectionStart) {
             const rect = this.engine.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const canvasPos = this.engine.screenToCanvas(x, y);
 
-            // Get shapes in selection box
             const selectedShapes = this.engine.getShapesInRect(
                 this.selectionStart.x,
                 this.selectionStart.y,
@@ -1108,7 +1749,6 @@ class DesignApp {
         }
 
         if (this.isDrawing && this.tempShape) {
-            // Check if shape is too small
             const bounds = this.tempShape.getBounds();
             if (bounds.width < 5 && bounds.height < 5 && this.currentTool !== 'text') {
                 this.engine.removeShape(this.tempShape);
@@ -1168,16 +1808,12 @@ class DesignApp {
         const y = e.clientY - rect.top;
         const shape = this.engine.getShapeAt(x, y);
 
-        // Double-click on text to edit - works from any tool
         if (shape && shape.type === 'text') {
-            // Temporarily switch to select tool
             const previousTool = this.currentTool;
             this.currentTool = 'select';
 
-            // Start editing
             this.textEditor.startEditing(shape);
 
-            // Restore tool after editing is done
             this.textEditor.onEditingComplete = () => {
                 this.currentTool = previousTool;
                 this.updateCursor();
@@ -1217,7 +1853,6 @@ class DesignApp {
             return;
         }
 
-        // Update color inputs
         document.getElementById('fill-color').value = shape.fillColor;
         document.getElementById('fill-color-text').value = shape.fillColor;
         document.getElementById('stroke-color').value = shape.strokeColor;
@@ -1225,7 +1860,6 @@ class DesignApp {
         document.getElementById('stroke-width').value = shape.strokeWidth;
         document.getElementById('stroke-width-value').textContent = shape.strokeWidth + 'px';
 
-        // Update transform inputs
         transformGroup.style.display = 'block';
         const bounds = shape.getBounds();
         document.getElementById('pos-x').value = Math.round(shape.x);
@@ -1235,13 +1869,11 @@ class DesignApp {
         document.getElementById('rotation').value = shape.rotation;
         document.getElementById('rotation-value').textContent = shape.rotation + '°';
 
-        // Update opacity and corner radius
         document.getElementById('opacity').value = Math.round(shape.opacity * 100);
         document.getElementById('opacity-value').textContent = Math.round(shape.opacity * 100) + '%';
         document.getElementById('corner-radius').value = shape.cornerRadius || 0;
         document.getElementById('corner-radius-value').textContent = (shape.cornerRadius || 0) + 'px';
 
-        // Update text inputs
         if (shape.type === 'text') {
             textGroup.style.display = 'block';
             document.getElementById('font-size').value = shape.fontSize;
@@ -1304,7 +1936,6 @@ class DesignApp {
 
     updateConnectionStatus() {
         const count = this.collaboration.getConnectionCount();
-        const peers = this.collaboration.getConnectedPeers();
         const connectedDiv = document.getElementById('connected-peers');
 
         if (count > 0) {
@@ -1337,7 +1968,6 @@ class DesignApp {
     copySelected() {
         if (this.engine.selectedShape) {
             this.clipboard = this.engine.selectedShape.toJSON();
-            console.log('Copied shape to clipboard');
         }
     }
 
@@ -1346,7 +1976,6 @@ class DesignApp {
             const ShapeClass = this.getShapeClass(this.clipboard.type);
             if (ShapeClass) {
                 const newShape = ShapeClass.fromJSON(this.clipboard);
-                // Offset the pasted shape
                 newShape.id = Math.random().toString(36).substr(2, 9);
                 newShape.x += 20;
                 newShape.y += 20;
@@ -1360,7 +1989,6 @@ class DesignApp {
                 this.engine.selectShape(newShape);
                 this.layerManager.update();
                 this.updateProperties(newShape);
-                console.log('Pasted shape from clipboard');
             }
         }
     }
@@ -1374,15 +2002,12 @@ class DesignApp {
 
     selectAll() {
         if (this.engine.shapes.length > 0) {
-            // Select all shapes using the existing selectMultiple method
             this.engine.selectMultiple(this.engine.shapes);
             this.layerManager.update();
 
-            // Update properties for the first selected shape
             if (this.engine.shapes.length === 1) {
                 this.updateProperties(this.engine.shapes[0]);
             } else {
-                // For multiple selections, clear individual properties
                 this.updateProperties(null);
             }
         }
@@ -1393,7 +2018,7 @@ class DesignApp {
         const ratio = start.shapeWidth / start.shapeHeight;
 
         switch (handleType) {
-            case 'se': // bottom-right
+            case 'se':
                 let newWidth = Math.max(10, start.shapeWidth + dx);
                 let newHeight = Math.max(10, start.shapeHeight + dy);
 
@@ -1409,7 +2034,7 @@ class DesignApp {
                 shape.x = start.shapeX + (newWidth - start.shapeWidth) / 2;
                 shape.y = start.shapeY + (newHeight - start.shapeHeight) / 2;
                 break;
-            case 'nw': // top-left
+            case 'nw':
                 let nwWidth = Math.max(10, start.shapeWidth - dx);
                 let nwHeight = Math.max(10, start.shapeHeight - dy);
 
@@ -1425,14 +2050,13 @@ class DesignApp {
                 shape.x = start.shapeX - (nwWidth - start.shapeWidth) / 2;
                 shape.y = start.shapeY - (nwHeight - start.shapeHeight) / 2;
                 break;
-            case 'ne': // top-right
+            case 'ne':
                 let neWidth = Math.max(10, start.shapeWidth + dx);
                 let neHeight = Math.max(10, start.shapeHeight - dy);
 
                 if (maintainRatio) {
                     neWidth = Math.max(10, start.shapeWidth + dx);
                     neHeight = neWidth / ratio;
-                    dy = start.shapeHeight - neHeight;
                 }
 
                 shape.width = neWidth;
@@ -1440,14 +2064,13 @@ class DesignApp {
                 shape.x = start.shapeX + (neWidth - start.shapeWidth) / 2;
                 shape.y = start.shapeY - (neHeight - start.shapeHeight) / 2;
                 break;
-            case 'sw': // bottom-left
+            case 'sw':
                 let swWidth = Math.max(10, start.shapeWidth - dx);
                 let swHeight = Math.max(10, start.shapeHeight + dy);
 
                 if (maintainRatio) {
                     swWidth = Math.max(10, start.shapeWidth - dx);
                     swHeight = swWidth / ratio;
-                    dy = swHeight - start.shapeHeight;
                 }
 
                 shape.width = swWidth;
@@ -1455,35 +2078,27 @@ class DesignApp {
                 shape.x = start.shapeX - (swWidth - start.shapeWidth) / 2;
                 shape.y = start.shapeY + (swHeight - start.shapeHeight) / 2;
                 break;
-            case 'e': // right
+            case 'e':
                 shape.width = Math.max(10, start.shapeWidth + dx);
-                if (maintainRatio) {
-                    shape.height = shape.width / ratio;
-                }
+                if (maintainRatio) shape.height = shape.width / ratio;
                 shape.x = start.shapeX + (shape.width - start.shapeWidth) / 2;
                 shape.y = start.shapeY + (shape.height - start.shapeHeight) / 2;
                 break;
-            case 'w': // left
+            case 'w':
                 shape.width = Math.max(10, start.shapeWidth - dx);
-                if (maintainRatio) {
-                    shape.height = shape.width / ratio;
-                }
+                if (maintainRatio) shape.height = shape.width / ratio;
                 shape.x = start.shapeX - (shape.width - start.shapeWidth) / 2;
                 shape.y = start.shapeY - (shape.height - start.shapeHeight) / 2;
                 break;
-            case 'n': // top
+            case 'n':
                 shape.height = Math.max(10, start.shapeHeight - dy);
-                if (maintainRatio) {
-                    shape.width = shape.height * ratio;
-                }
+                if (maintainRatio) shape.width = shape.height * ratio;
                 shape.x = start.shapeX + (shape.width - start.shapeWidth) / 2;
                 shape.y = start.shapeY - (shape.height - start.shapeHeight) / 2;
                 break;
-            case 's': // bottom
+            case 's':
                 shape.height = Math.max(10, start.shapeHeight + dy);
-                if (maintainRatio) {
-                    shape.width = shape.height * ratio;
-                }
+                if (maintainRatio) shape.width = shape.height * ratio;
                 shape.x = start.shapeX + (shape.width - start.shapeWidth) / 2;
                 shape.y = start.shapeY + (shape.height - start.shapeHeight) / 2;
                 break;
@@ -1494,7 +2109,6 @@ class DesignApp {
         const start = this.resizeStart;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Determine if we're increasing or decreasing radius
         const isIncreasing = (handleType.includes('e') && dx > 0) ||
                             (handleType.includes('w') && dx < 0) ||
                             (handleType.includes('s') && dy > 0) ||
@@ -1542,6 +2156,16 @@ class DesignApp {
             case 'arrow': return Arrow;
             default: return null;
         }
+    }
+
+    showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('visible');
+
+        setTimeout(() => {
+            toast.classList.remove('visible');
+        }, 2000);
     }
 
     exportPNG() {
