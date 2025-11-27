@@ -6,6 +6,13 @@ import { TextEditor } from './text-editor.js';
 import { Connector } from './connector.js';
 import { Diamond, Parallelogram, Cylinder, Cloud, Hexagon } from './diagram-shapes.js';
 import { LayoutEngine } from './layout-engine.js';
+import { Path, PenTool, Pencil } from './pen-tool.js';
+import { ImageShape, ImageImporter } from './image-shape.js';
+import { Group, Component, ComponentInstance, ComponentLibrary } from './group.js';
+import { GradientFill, Shadow, BlurEffect, BlendModes, GradientPresets, ShadowPresets } from './effects.js';
+import { SmartGuides, Grid, Rulers } from './smart-guides.js';
+import { AutoLayout, Frame, Constraints } from './auto-layout.js';
+import { PrototypeManager, PrototypeLink, AnimationPresets } from './prototyping.js';
 
 // Export shape classes to window for collaboration
 window.Rectangle = Rectangle;
@@ -21,6 +28,12 @@ window.Parallelogram = Parallelogram;
 window.Cylinder = Cylinder;
 window.Cloud = Cloud;
 window.Hexagon = Hexagon;
+window.Path = Path;
+window.Pencil = Pencil;
+window.ImageShape = ImageShape;
+window.Group = Group;
+window.Component = Component;
+window.Frame = Frame;
 
 class DesignApp {
     constructor() {
@@ -32,6 +45,15 @@ class DesignApp {
         this.textEditor = null;
         this.connectMode = false;
         this.connectStart = null;
+
+        // New features
+        this.penTool = new PenTool(this.engine);
+        this.imageImporter = new ImageImporter(this.engine);
+        this.smartGuides = new SmartGuides(this.engine);
+        this.grid = new Grid(this.engine);
+        this.rulers = new Rulers(this.engine);
+        this.componentLibrary = new ComponentLibrary();
+        this.prototypeManager = new PrototypeManager(this.engine);
 
         this.currentTool = 'select';
         this.currentTab = 'design';
@@ -51,6 +73,9 @@ class DesignApp {
         this.resizeStart = null;
         this.isRotating = false;
         this.rotationStart = null;
+        this.isPenDrawing = false;
+        this.isPencilDrawing = false;
+        this.currentPencilPath = null;
 
         this.fillColor = '#0d99ff';
         this.strokeColor = '#333333';
@@ -59,6 +84,15 @@ class DesignApp {
         this.clipboard = null;
         this.isSpacePressed = false;
         this.tempCursor = null;
+
+        // Effects state
+        this.useGradient = false;
+        this.currentGradient = new GradientFill('linear', [
+            { offset: 0, color: '#0d99ff' },
+            { offset: 1, color: '#7c3aed' }
+        ], 90);
+        this.currentShadow = null;
+        this.currentBlendMode = BlendModes.NORMAL;
 
         // Mermaid state
         this.mermaidHistory = [];
@@ -72,6 +106,9 @@ class DesignApp {
 
         // Dark theme state
         this.isDarkTheme = false;
+
+        // Prototype mode
+        this.isPrototypeMode = false;
 
         this.init();
     }
@@ -87,6 +124,7 @@ class DesignApp {
         this.setupContextMenu();
         this.setupMermaid();
         this.setupThemeToggle();
+        this.setupNewFeatures();
 
         // Initialize collaboration
         try {
@@ -185,6 +223,11 @@ class DesignApp {
                 btn.classList.add('active');
                 this.currentTool = btn.dataset.tool;
                 this.updateCursor();
+
+                // Handle special tools
+                if (this.currentTool === 'image') {
+                    this.importImage();
+                }
             });
         });
 
@@ -382,6 +425,13 @@ class DesignApp {
                 } else if (e.key === 'a') {
                     e.preventDefault();
                     this.selectAll();
+                } else if (e.key === 'g') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.ungroupSelection();
+                    } else {
+                        this.groupSelection();
+                    }
                 }
             }
 
@@ -411,6 +461,25 @@ class DesignApp {
                     case 'a':
                         if (!e.ctrlKey) {
                             this.selectTool('arrow');
+                        }
+                        break;
+                    case 'p':
+                        this.selectTool('pen');
+                        break;
+                    case 'b':
+                        this.selectTool('pencil');
+                        break;
+                    case 'f':
+                        this.selectTool('frame');
+                        break;
+                    case 'i':
+                        this.selectTool('image');
+                        this.importImage();
+                        break;
+                    case 'g':
+                        if (!e.ctrlKey && !e.metaKey) {
+                            this.grid.toggle();
+                            document.getElementById('grid-btn')?.classList.toggle('active', this.grid.visible);
                         }
                         break;
                 }
@@ -1882,6 +1951,25 @@ Bio-conversion,Gas,81.144`
         } else {
             textGroup.style.display = 'none';
         }
+
+        // Show effects and gradient groups
+        const effectsGroup = document.getElementById('effects-group');
+        const gradientGroup = document.getElementById('gradient-group');
+        const autoLayoutGroup = document.getElementById('auto-layout-group');
+
+        if (effectsGroup) effectsGroup.style.display = 'block';
+        if (gradientGroup) gradientGroup.style.display = 'block';
+
+        // Show auto layout only for frames
+        if (autoLayoutGroup) {
+            autoLayoutGroup.style.display = shape.type === 'frame' ? 'block' : 'none';
+        }
+
+        // Update gradient checkbox
+        const gradientEnabled = document.getElementById('gradient-enabled');
+        if (gradientEnabled) {
+            gradientEnabled.checked = !!shape.gradient;
+        }
     }
 
     updateSelectedShapeProperty(property, value) {
@@ -2196,6 +2284,399 @@ Bio-conversion,Gas,81.144`
         link.href = url;
         link.click();
         URL.revokeObjectURL(url);
+    }
+
+    // =============================================
+    // New Features Setup
+    // =============================================
+
+    setupNewFeatures() {
+        // Setup image drag and drop
+        const canvas = document.getElementById('canvas');
+        this.imageImporter.setupDragAndDrop(canvas);
+
+        // Grid toggle
+        const gridBtn = document.getElementById('grid-btn');
+        if (gridBtn) {
+            gridBtn.addEventListener('click', () => {
+                this.grid.toggle();
+                gridBtn.classList.toggle('active', this.grid.visible);
+            });
+        }
+
+        // Snap toggle
+        const snapBtn = document.getElementById('snap-btn');
+        if (snapBtn) {
+            snapBtn.addEventListener('click', () => {
+                this.smartGuides.enabled = !this.smartGuides.enabled;
+                snapBtn.classList.toggle('active', this.smartGuides.enabled);
+            });
+        }
+
+        // Prototype mode
+        const protoBtn = document.getElementById('prototype-btn');
+        if (protoBtn) {
+            protoBtn.addEventListener('click', () => this.togglePrototypeMode());
+        }
+
+        // Group/Ungroup
+        const groupBtn = document.getElementById('group-btn');
+        if (groupBtn) {
+            groupBtn.addEventListener('click', () => this.groupSelection());
+        }
+
+        const ungroupBtn = document.getElementById('ungroup-btn');
+        if (ungroupBtn) {
+            ungroupBtn.addEventListener('click', () => this.ungroupSelection());
+        }
+
+        // Create Component
+        const componentBtn = document.getElementById('component-btn');
+        if (componentBtn) {
+            componentBtn.addEventListener('click', () => this.createComponent());
+        }
+
+        // Gradient controls
+        this.setupGradientControls();
+
+        // Effects controls
+        this.setupEffectsControls();
+
+        // Auto layout controls
+        this.setupAutoLayoutControls();
+    }
+
+    setupGradientControls() {
+        const gradientEnabled = document.getElementById('gradient-enabled');
+        const gradientType = document.getElementById('gradient-type');
+        const gradientAngle = document.getElementById('gradient-angle');
+        const gradientPreview = document.getElementById('gradient-preview');
+
+        if (gradientEnabled) {
+            gradientEnabled.addEventListener('change', (e) => {
+                this.useGradient = e.target.checked;
+                this.applyFillToSelection();
+            });
+        }
+
+        if (gradientType) {
+            gradientType.addEventListener('change', (e) => {
+                this.currentGradient.type = e.target.value;
+                this.updateGradientPreview();
+                this.applyFillToSelection();
+            });
+        }
+
+        if (gradientAngle) {
+            gradientAngle.addEventListener('input', (e) => {
+                this.currentGradient.angle = parseInt(e.target.value);
+                document.getElementById('gradient-angle-value').textContent = `${e.target.value}°`;
+                this.updateGradientPreview();
+                this.applyFillToSelection();
+            });
+        }
+
+        // Gradient stop colors
+        document.querySelectorAll('.stop-color').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                if (this.currentGradient.stops[index]) {
+                    this.currentGradient.stops[index].color = e.target.value;
+                    this.updateGradientPreview();
+                    this.applyFillToSelection();
+                }
+            });
+        });
+
+        // Gradient presets
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const presetName = btn.dataset.preset;
+                if (GradientPresets[presetName]) {
+                    this.currentGradient = new GradientFill(
+                        GradientPresets[presetName].type,
+                        [...GradientPresets[presetName].stops],
+                        GradientPresets[presetName].angle
+                    );
+                    this.updateGradientPreview();
+                    this.applyFillToSelection();
+                }
+            });
+        });
+    }
+
+    updateGradientPreview() {
+        const preview = document.getElementById('gradient-preview');
+        if (preview) {
+            preview.style.background = this.currentGradient.toCSS();
+        }
+    }
+
+    applyFillToSelection() {
+        const selected = this.engine.getSelectedShapes();
+        if (selected.length === 0) return;
+
+        selected.forEach(shape => {
+            if (this.useGradient) {
+                shape.gradient = this.currentGradient;
+            } else {
+                shape.gradient = null;
+                shape.fillColor = this.fillColor;
+            }
+        });
+
+        this.engine.render();
+    }
+
+    setupEffectsControls() {
+        // Shadow controls
+        const shadowX = document.getElementById('shadow-x');
+        const shadowY = document.getElementById('shadow-y');
+        const shadowBlur = document.getElementById('shadow-blur');
+        const shadowSpread = document.getElementById('shadow-spread');
+        const shadowColor = document.getElementById('shadow-color');
+        const shadowOpacity = document.getElementById('shadow-opacity');
+
+        const updateShadow = () => {
+            if (!shadowX) return;
+
+            const opacity = parseInt(shadowOpacity?.value || 25) / 100;
+            const color = shadowColor?.value || '#000000';
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+
+            this.currentShadow = new Shadow({
+                offsetX: parseInt(shadowX.value) || 0,
+                offsetY: parseInt(shadowY.value) || 4,
+                blur: parseInt(shadowBlur?.value) || 8,
+                spread: parseInt(shadowSpread?.value) || 0,
+                color: `rgba(${r}, ${g}, ${b}, ${opacity})`
+            });
+
+            this.applyEffectsToSelection();
+        };
+
+        [shadowX, shadowY, shadowBlur, shadowSpread, shadowColor, shadowOpacity].forEach(el => {
+            if (el) el.addEventListener('change', updateShadow);
+        });
+
+        // Blur amount
+        const blurAmount = document.getElementById('blur-amount');
+        if (blurAmount) {
+            blurAmount.addEventListener('input', (e) => {
+                document.getElementById('blur-value').textContent = `${e.target.value}px`;
+                this.applyEffectsToSelection();
+            });
+        }
+
+        // Blend mode
+        const blendMode = document.getElementById('blend-mode');
+        if (blendMode) {
+            blendMode.addEventListener('change', (e) => {
+                this.currentBlendMode = e.target.value;
+                this.applyEffectsToSelection();
+            });
+        }
+    }
+
+    applyEffectsToSelection() {
+        const selected = this.engine.getSelectedShapes();
+        if (selected.length === 0) return;
+
+        selected.forEach(shape => {
+            if (this.currentShadow) {
+                shape.shadow = this.currentShadow;
+            }
+            shape.blendMode = this.currentBlendMode;
+        });
+
+        this.engine.render();
+    }
+
+    setupAutoLayoutControls() {
+        // Direction toggle
+        document.querySelectorAll('.dir-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Alignment buttons
+        document.querySelectorAll('.align-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+    }
+
+    // Group selection
+    groupSelection() {
+        const selected = this.engine.getSelectedShapes();
+        if (selected.length < 2) return;
+
+        // Remove shapes from engine
+        selected.forEach(s => this.engine.removeShape(s));
+
+        // Create group
+        const group = new Group(selected, {
+            fillColor: 'transparent',
+            strokeWidth: 0
+        });
+
+        this.engine.addShape(group);
+        this.engine.selectShape(group);
+        this.layerManager.refresh();
+
+        this.history.push(createAddShapeAction(group, this.engine));
+    }
+
+    // Ungroup selection
+    ungroupSelection() {
+        const selected = this.engine.selectedShape;
+        if (!selected || selected.type !== 'group') return;
+
+        const children = selected.ungroup();
+        this.engine.removeShape(selected);
+
+        children.forEach(child => {
+            this.engine.addShape(child);
+        });
+
+        this.engine.selectMultiple(children);
+        this.layerManager.refresh();
+    }
+
+    // Create component from selection
+    createComponent() {
+        const selected = this.engine.getSelectedShapes();
+        if (selected.length === 0) return;
+
+        // Remove shapes from engine
+        selected.forEach(s => this.engine.removeShape(s));
+
+        // Create component
+        const component = new Component(selected, {
+            name: `Component ${this.componentLibrary.components.size + 1}`,
+            fillColor: 'transparent',
+            strokeWidth: 0
+        });
+
+        this.engine.addShape(component);
+        this.engine.selectShape(component);
+        this.componentLibrary.add(component, 'Local');
+        this.layerManager.refresh();
+    }
+
+    // Toggle prototype mode
+    togglePrototypeMode() {
+        this.isPrototypeMode = !this.isPrototypeMode;
+        const protoBtn = document.getElementById('prototype-btn');
+
+        if (this.isPrototypeMode) {
+            protoBtn?.classList.add('active');
+            this.enterPrototypePreview();
+        } else {
+            protoBtn?.classList.remove('active');
+            this.exitPrototypePreview();
+        }
+    }
+
+    enterPrototypePreview() {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'prototype-overlay';
+        overlay.id = 'prototype-overlay';
+
+        // Clone canvas
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.className = 'prototype-canvas';
+        previewCanvas.width = this.engine.canvas.width;
+        previewCanvas.height = this.engine.canvas.height;
+
+        const ctx = previewCanvas.getContext('2d');
+        ctx.drawImage(this.engine.canvas, 0, 0);
+
+        overlay.appendChild(previewCanvas);
+
+        // Controls
+        const controls = document.createElement('div');
+        controls.className = 'prototype-controls';
+        controls.innerHTML = `
+            <button class="icon-btn" id="proto-back" title="Back">←</button>
+            <button class="icon-btn" id="proto-close" title="Close">✕</button>
+        `;
+        overlay.appendChild(controls);
+
+        document.body.appendChild(overlay);
+
+        // Event listeners
+        document.getElementById('proto-close').addEventListener('click', () => {
+            this.togglePrototypeMode();
+        });
+
+        document.getElementById('proto-back').addEventListener('click', () => {
+            this.prototypeManager.goBack();
+        });
+
+        // Start prototype
+        this.prototypeManager.enterPreviewMode();
+    }
+
+    exitPrototypePreview() {
+        const overlay = document.getElementById('prototype-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+        this.prototypeManager.exitPreviewMode();
+    }
+
+    // Import image
+    async importImage() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    const shape = await this.imageImporter.importFromFile(file, 0, 0);
+                    this.engine.selectShape(shape);
+                    this.layerManager.refresh();
+                    this.history.push(createAddShapeAction(shape, this.engine));
+                } catch (err) {
+                    console.error('Failed to import image:', err);
+                }
+            }
+        };
+
+        input.click();
+    }
+
+    // Override render to include smart guides
+    renderWithGuides() {
+        this.engine.render();
+
+        if (this.smartGuides.enabled && this.isDragging) {
+            this.engine.ctx.save();
+            this.engine.ctx.translate(this.engine.canvas.width / 2, this.engine.canvas.height / 2);
+            this.engine.ctx.scale(this.engine.zoom, this.engine.zoom);
+            this.engine.ctx.translate(this.engine.pan.x, this.engine.pan.y);
+            this.smartGuides.draw(this.engine.ctx);
+            this.engine.ctx.restore();
+        }
+
+        if (this.grid.visible) {
+            this.engine.ctx.save();
+            this.engine.ctx.translate(this.engine.canvas.width / 2, this.engine.canvas.height / 2);
+            this.engine.ctx.scale(this.engine.zoom, this.engine.zoom);
+            this.engine.ctx.translate(this.engine.pan.x, this.engine.pan.y);
+            this.grid.draw(this.engine.ctx);
+            this.engine.ctx.restore();
+        }
     }
 }
 

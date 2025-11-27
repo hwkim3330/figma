@@ -504,6 +504,282 @@ select:focus {
     pointer-events: none;
 }
 
+/* New Property Styles */
+.separator {
+    width: 1px;
+    height: 24px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+.property-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.property-header label {
+    margin: 0;
+}
+
+.icon-btn-small {
+    width: 24px;
+    height: 24px;
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn-small:hover {
+    background: var(--accent-blue-hover);
+}
+
+.small-input {
+    width: 60px !important;
+}
+
+/* Shadow Controls */
+.shadow-controls {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.effect-item {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.effect-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+/* Gradient Controls */
+.gradient-controls {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.gradient-preview {
+    height: 40px;
+    border-radius: 6px;
+    margin: 12px 0;
+    background: linear-gradient(90deg, #0d99ff, #7c3aed);
+    border: 1px solid var(--border-color);
+}
+
+.gradient-stops {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.gradient-stop {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gradient-stop input[type="color"] {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.gradient-presets {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.preset-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.preset-btn:hover {
+    border-color: var(--accent-blue);
+    transform: scale(1.1);
+}
+
+.preset-btn[data-preset="sunset"] {
+    background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb);
+}
+
+.preset-btn[data-preset="ocean"] {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.preset-btn[data-preset="forest"] {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+}
+
+.preset-btn[data-preset="fire"] {
+    background: radial-gradient(#f12711, #f5af19);
+}
+
+.preset-btn[data-preset="midnight"] {
+    background: linear-gradient(180deg, #232526, #414345);
+}
+
+/* Auto Layout Controls */
+.auto-layout-controls {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.direction-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.dir-btn {
+    flex: 1;
+    padding: 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.dir-btn.active {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+
+.alignment-grid {
+    display: flex;
+    gap: 4px;
+}
+
+.align-btn {
+    flex: 1;
+    padding: 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.align-btn.active {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+
+/* Grid Overlay */
+.grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Smart Guides */
+.smart-guide {
+    position: absolute;
+    background: #ff3366;
+    z-index: 100;
+}
+
+.smart-guide.horizontal {
+    height: 1px;
+    width: 100%;
+}
+
+.smart-guide.vertical {
+    width: 1px;
+    height: 100%;
+}
+
+/* Prototype Mode */
+.prototype-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.prototype-canvas {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.prototype-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 12px 20px;
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+}
+
+/* Collapsible Properties */
+.property-group.collapsible .property-header {
+    cursor: pointer;
+}
+
+.property-group.collapsible .property-header::before {
+    content: '▼';
+    font-size: 10px;
+    margin-right: 8px;
+    transition: transform 0.2s;
+}
+
+.property-group.collapsible.collapsed .property-header::before {
+    transform: rotate(-90deg);
+}
+
+.property-group.collapsible.collapsed > *:not(.property-header) {
+    display: none;
+}
+
 /* ================================== */
 /* Mermaid Tab Styles */
 /* ================================== */
