@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagram Editor - DesignFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface-2: #21262d;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #8b5cf6;
+            --accent-2: #a78bfa;
+            --success: #238636;
+            --error: #f85149;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover { background: var(--surface-2); color: var(--text); }
+
+        .logo {
+            font-weight: 600;
+            font-size: 18px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .version {
+            font-size: 11px;
+            padding: 4px 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border-radius: 14px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .select-styled {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .select-styled:focus { outline: none; border-color: var(--accent); }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover { border-color: var(--accent); background: var(--surface); }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover { opacity: 0.9; background: var(--accent); }
+
+        .btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Editor Panel */
+        .editor-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:hover { background: var(--surface-2); }
+        .icon-btn svg { width: 16px; height: 16px; stroke: var(--text-dim); stroke-width: 2; fill: none; }
+        .icon-btn:hover svg { stroke: var(--text); }
+
+        .code-wrapper {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .line-numbers {
+            min-width: 50px;
+            padding: 16px 8px;
+            background: var(--surface);
+            text-align: right;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-dim);
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .code-editor {
+            flex: 1;
+            background: var(--bg);
+            border: none;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text);
+            resize: none;
+            outline: none;
+        }
+
+        .code-editor::placeholder { color: var(--text-dim); }
+
+        .error-bar {
+            padding: 10px 16px;
+            background: rgba(248, 81, 73, 0.1);
+            border-top: 1px solid var(--error);
+            color: var(--error);
+            font-size: 12px;
+            display: none;
+        }
+
+        .error-bar.show { display: block; }
+
+        /* Preview Panel */
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+        }
+
+        .preview-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mermaid-output {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            min-width: 200px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mermaid-output svg { max-width: 100%; height: auto; }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-dim);
+        }
+
+        .empty-state svg { width: 64px; height: 64px; stroke: var(--border); margin-bottom: 16px; }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+        }
+
+        .zoom-display {
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* Templates Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show { display: flex; }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--surface-2);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--text);
+        }
+
+        .modal-close:hover { background: var(--accent); }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .templates-search {
+            margin-bottom: 20px;
+        }
+
+        .templates-search input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .templates-search input:focus { outline: none; border-color: var(--accent); }
+
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .template-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .template-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .template-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .template-icon svg { width: 24px; height: 24px; stroke: white; stroke-width: 2; fill: none; }
+
+        .template-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .template-desc {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--surface-2);
+            color: var(--text);
+            padding: 14px 28px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            font-size: 14px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Live indicator */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--success);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Fullscreen */
+        .fullscreen .editor-panel { display: none; }
+        .fullscreen .preview-panel { width: 100%; }
+
+        /* Resizer */
+        .resizer {
+            width: 6px;
+            background: var(--border);
+            cursor: col-resize;
+            transition: background 0.2s;
+        }
+
+        .resizer:hover { background: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Home
+            </a>
+            <span class="logo">Diagram Editor</span>
+            <span class="version">v3.0</span>
+        </div>
+
+        <div class="header-center">
+            <select class="select-styled" id="diagram-type">
+                <option value="flowchart">Flowchart</option>
+                <option value="sequence">Sequence</option>
+                <option value="class">Class Diagram</option>
+                <option value="state">State Diagram</option>
+                <option value="er">ER Diagram</option>
+                <option value="journey">User Journey</option>
+                <option value="gantt">Gantt Chart</option>
+                <option value="pie">Pie Chart</option>
+                <option value="mindmap">Mind Map</option>
+                <option value="timeline">Timeline</option>
+                <option value="gitgraph">Git Graph</option>
+            </select>
+
+            <select class="select-styled" id="theme-select">
+                <option value="default">Default Theme</option>
+                <option value="dark">Dark Theme</option>
+                <option value="forest">Forest Theme</option>
+                <option value="neutral">Neutral Theme</option>
+            </select>
+
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                Live Preview
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button class="btn" id="templates-btn">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                Templates
+            </button>
+            <button class="btn" id="export-svg-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                SVG
+            </button>
+            <button class="btn" id="export-png-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PNG
+            </button>
+            <button class="btn btn-primary" id="fullscreen-btn">
+                <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                Fullscreen
+            </button>
+        </div>
+    </div>
+
+    <div class="main-content" id="main-content">
+        <div class="editor-panel" id="editor-panel">
+            <div class="panel-header">
+                <span class="panel-title">CODE EDITOR</span>
+                <div class="panel-actions">
+                    <button class="icon-btn" id="format-btn" title="Format Code">
+                        <svg viewBox="0 0 24 24"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
+                    </button>
+                    <button class="icon-btn" id="copy-btn" title="Copy Code">
+                        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="code-wrapper">
+                <div class="line-numbers" id="line-numbers">1</div>
+                <textarea class="code-editor" id="code-editor" spellcheck="false" placeholder="Enter Mermaid code here...
+
+Example:
+flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[OK]
+    B -->|No| D[Cancel]"></textarea>
+            </div>
+            <div class="error-bar" id="error-bar"></div>
+        </div>
+
+        <div class="resizer" id="resizer"></div>
+
+        <div class="preview-panel">
+            <div class="panel-header">
+                <span class="panel-title">PREVIEW</span>
+            </div>
+            <div class="preview-wrapper" id="preview-wrapper">
+                <div class="mermaid-output" id="mermaid-output">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="12" y1="18" x2="12" y2="12"/>
+                            <line x1="9" y1="15" x2="15" y2="15"/>
+                        </svg>
+                        <p>Enter Mermaid code or select a template</p>
+                    </div>
+                </div>
+            </div>
+            <div class="zoom-controls">
+                <button class="icon-btn" id="zoom-out-btn">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                </button>
+                <span class="zoom-display" id="zoom-display">100%</span>
+                <button class="icon-btn" id="zoom-in-btn">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                </button>
+                <button class="icon-btn" id="zoom-fit-btn" title="Fit to View">
+                    <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates Modal -->
+    <div class="modal" id="templates-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Diagram Templates</span>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="templates-search">
+                    <input type="text" id="template-search" placeholder="Search templates...">
+                </div>
+                <div class="templates-grid" id="templates-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============ Templates ============
+        const templates = {
+            flowchart: {
+                name: 'Flowchart',
+                desc: 'Basic flowchart with decisions',
+                icon: 'flow',
+                code: `flowchart TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+    C --> E[Deploy]
+    E --> F[End]`
+            },
+            sequence: {
+                name: 'Sequence Diagram',
+                desc: 'Communication between actors',
+                icon: 'sequence',
+                code: `sequenceDiagram
+    participant User
+    participant Client
+    participant Server
+    participant Database
+
+    User->>Client: Click Button
+    Client->>Server: API Request
+    Server->>Database: Query
+    Database-->>Server: Result
+    Server-->>Client: Response
+    Client-->>User: Show Result`
+            },
+            class: {
+                name: 'Class Diagram',
+                desc: 'Object-oriented structure',
+                icon: 'class',
+                code: `classDiagram
+    class Animal {
+        +String name
+        +int age
+        +makeSound()
+    }
+    class Dog {
+        +String breed
+        +bark()
+    }
+    class Cat {
+        +String color
+        +meow()
+    }
+    Animal <|-- Dog
+    Animal <|-- Cat`
+            },
+            state: {
+                name: 'State Diagram',
+                desc: 'State machine transitions',
+                icon: 'state',
+                code: `stateDiagram-v2
+    [*] --> Idle
+    Idle --> Processing : Start
+    Processing --> Success : Complete
+    Processing --> Error : Fail
+    Error --> Idle : Retry
+    Success --> [*]`
+            },
+            er: {
+                name: 'ER Diagram',
+                desc: 'Database entity relationships',
+                icon: 'er',
+                code: `erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER {
+        string name
+        string email
+        string address
+    }
+    ORDER {
+        int orderNumber
+        date created
+        string status
+    }
+    LINE-ITEM {
+        int quantity
+        float price
+    }`
+            },
+            journey: {
+                name: 'User Journey',
+                desc: 'User experience mapping',
+                icon: 'journey',
+                code: `journey
+    title My working day
+    section Go to work
+        Make tea: 5: Me
+        Go upstairs: 3: Me
+        Do work: 1: Me, Cat
+    section Go home
+        Go downstairs: 5: Me
+        Sit down: 5: Me`
+            },
+            gantt: {
+                name: 'Gantt Chart',
+                desc: 'Project timeline',
+                icon: 'gantt',
+                code: `gantt
+    title Project Schedule
+    dateFormat YYYY-MM-DD
+    section Planning
+        Research      :a1, 2024-01-01, 7d
+        Design        :a2, after a1, 5d
+    section Development
+        Frontend      :a3, after a2, 10d
+        Backend       :a4, after a2, 12d
+    section Testing
+        QA Testing    :a5, after a3, 5d`
+            },
+            pie: {
+                name: 'Pie Chart',
+                desc: 'Data distribution',
+                icon: 'pie',
+                code: `pie showData
+    title Browser Market Share
+    "Chrome" : 65
+    "Firefox" : 15
+    "Safari" : 12
+    "Edge" : 5
+    "Other" : 3`
+            },
+            mindmap: {
+                name: 'Mind Map',
+                desc: 'Hierarchical ideas',
+                icon: 'mindmap',
+                code: `mindmap
+    root((Project))
+        Planning
+            Requirements
+            Timeline
+            Budget
+        Development
+            Frontend
+            Backend
+            Database
+        Testing
+            Unit Tests
+            Integration
+        Deployment
+            Staging
+            Production`
+            },
+            timeline: {
+                name: 'Timeline',
+                desc: 'Chronological events',
+                icon: 'timeline',
+                code: `timeline
+    title History of Web Development
+    1991 : HTML invented
+    1995 : JavaScript created
+    1996 : CSS introduced
+    2004 : Web 2.0 era begins
+    2010 : Responsive design
+    2015 : ES6 released
+    2020 : JAMstack popular`
+            },
+            gitgraph: {
+                name: 'Git Graph',
+                desc: 'Git branching history',
+                icon: 'git',
+                code: `gitGraph
+    commit id: "Initial"
+    branch develop
+    checkout develop
+    commit id: "Feature A"
+    commit id: "Feature B"
+    checkout main
+    merge develop id: "Merge develop"
+    commit id: "Hotfix"
+    branch release
+    checkout release
+    commit id: "Release 1.0"`
+            },
+            architecture: {
+                name: 'Architecture',
+                desc: 'System architecture diagram',
+                icon: 'arch',
+                code: `flowchart TB
+    subgraph Client
+        A[Web App]
+        B[Mobile App]
+    end
+    subgraph API Gateway
+        C[Load Balancer]
+    end
+    subgraph Services
+        D[Auth Service]
+        E[User Service]
+        F[Order Service]
+    end
+    subgraph Data
+        G[(PostgreSQL)]
+        H[(Redis Cache)]
+    end
+    A --> C
+    B --> C
+    C --> D
+    C --> E
+    C --> F
+    D --> G
+    E --> G
+    F --> G
+    D --> H
+    E --> H`
+            }
+        };
+
+        // ============ State ============
+        const state = {
+            code: '',
+            theme: 'default',
+            zoom: 1,
+            isFullscreen: false,
+            renderTimeout: null
+        };
+
+        // ============ DOM Elements ============
+        const codeEditor = document.getElementById('code-editor');
+        const lineNumbers = document.getElementById('line-numbers');
+        const mermaidOutput = document.getElementById('mermaid-output');
+        const errorBar = document.getElementById('error-bar');
+        const diagramType = document.getElementById('diagram-type');
+        const themeSelect = document.getElementById('theme-select');
+        const templatesModal = document.getElementById('templates-modal');
+        const templatesGrid = document.getElementById('templates-grid');
+        const toast = document.getElementById('toast');
+        const zoomDisplay = document.getElementById('zoom-display');
+        const mainContent = document.getElementById('main-content');
+        const editorPanel = document.getElementById('editor-panel');
+        const resizer = document.getElementById('resizer');
+
+        // ============ Initialize ============
+        function init() {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'loose',
+                flowchart: { curve: 'basis' }
+            });
+
+            setupEventListeners();
+            renderTemplates();
+
+            // Load default template
+            loadTemplate('flowchart');
+        }
+
+        // ============ Event Listeners ============
+        function setupEventListeners() {
+            // Code editor
+            codeEditor.addEventListener('input', () => {
+                updateLineNumbers();
+                debouncedRender();
+            });
+
+            codeEditor.addEventListener('scroll', () => {
+                lineNumbers.scrollTop = codeEditor.scrollTop;
+            });
+
+            codeEditor.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = codeEditor.selectionStart;
+                    const end = codeEditor.selectionEnd;
+                    codeEditor.value = codeEditor.value.substring(0, start) + '    ' + codeEditor.value.substring(end);
+                    codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+                    debouncedRender();
+                }
+            });
+
+            // Theme select
+            themeSelect.addEventListener('change', () => {
+                state.theme = themeSelect.value;
+                mermaid.initialize({ theme: state.theme });
+                renderDiagram();
+            });
+
+            // Diagram type select
+            diagramType.addEventListener('change', () => {
+                loadTemplate(diagramType.value);
+            });
+
+            // Buttons
+            document.getElementById('templates-btn').addEventListener('click', () => {
+                templatesModal.classList.add('show');
+            });
+
+            document.getElementById('close-modal').addEventListener('click', () => {
+                templatesModal.classList.remove('show');
+            });
+
+            document.getElementById('copy-btn').addEventListener('click', copyCode);
+            document.getElementById('format-btn').addEventListener('click', formatCode);
+            document.getElementById('export-svg-btn').addEventListener('click', exportSVG);
+            document.getElementById('export-png-btn').addEventListener('click', exportPNG);
+            document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+
+            // Zoom
+            document.getElementById('zoom-in-btn').addEventListener('click', () => zoom(0.1));
+            document.getElementById('zoom-out-btn').addEventListener('click', () => zoom(-0.1));
+            document.getElementById('zoom-fit-btn').addEventListener('click', () => {
+                state.zoom = 1;
+                updateZoom();
+            });
+
+            // Template search
+            document.getElementById('template-search').addEventListener('input', (e) => {
+                filterTemplates(e.target.value);
+            });
+
+            // Click outside modal
+            templatesModal.addEventListener('click', (e) => {
+                if (e.target === templatesModal) {
+                    templatesModal.classList.remove('show');
+                }
+            });
+
+            // Resizer
+            setupResizer();
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    exportSVG();
+                }
+            });
+        }
+
+        function setupResizer() {
+            let isResizing = false;
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                const width = e.clientX;
+                const minWidth = 300;
+                const maxWidth = window.innerWidth - 400;
+                if (width >= minWidth && width <= maxWidth) {
+                    editorPanel.style.width = width + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.body.style.cursor = '';
+            });
+        }
+
+        // ============ Rendering ============
+        function debouncedRender() {
+            clearTimeout(state.renderTimeout);
+            state.renderTimeout = setTimeout(renderDiagram, 300);
+        }
+
+        async function renderDiagram() {
+            const code = codeEditor.value.trim();
+            if (!code) {
+                mermaidOutput.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="12" y1="18" x2="12" y2="12"/>
+                            <line x1="9" y1="15" x2="15" y2="15"/>
+                        </svg>
+                        <p>Enter Mermaid code or select a template</p>
+                    </div>
+                `;
+                errorBar.classList.remove('show');
+                return;
+            }
+
+            try {
+                const { svg } = await mermaid.render('mermaid-diagram', code);
+                mermaidOutput.innerHTML = svg;
+                updateZoom();
+                errorBar.classList.remove('show');
+            } catch (error) {
+                errorBar.textContent = error.message || 'Syntax error in diagram';
+                errorBar.classList.add('show');
+            }
+        }
+
+        function updateLineNumbers() {
+            const lines = codeEditor.value.split('\n').length;
+            lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+        }
+
+        // ============ Templates ============
+        function renderTemplates() {
+            templatesGrid.innerHTML = '';
+
+            Object.entries(templates).forEach(([key, template]) => {
+                const card = document.createElement('div');
+                card.className = 'template-card';
+                card.innerHTML = `
+                    <div class="template-icon">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                    </div>
+                    <div class="template-name">${template.name}</div>
+                    <div class="template-desc">${template.desc}</div>
+                `;
+                card.addEventListener('click', () => {
+                    loadTemplate(key);
+                    templatesModal.classList.remove('show');
+                });
+                templatesGrid.appendChild(card);
+            });
+        }
+
+        function loadTemplate(key) {
+            const template = templates[key];
+            if (template) {
+                codeEditor.value = template.code;
+                updateLineNumbers();
+                renderDiagram();
+
+                // Update diagram type select if it exists
+                if (diagramType.querySelector(`option[value="${key}"]`)) {
+                    diagramType.value = key;
+                }
+            }
+        }
+
+        function filterTemplates(query) {
+            const cards = templatesGrid.querySelectorAll('.template-card');
+            const lowerQuery = query.toLowerCase();
+
+            cards.forEach((card, index) => {
+                const name = card.querySelector('.template-name').textContent.toLowerCase();
+                const desc = card.querySelector('.template-desc').textContent.toLowerCase();
+                const matches = name.includes(lowerQuery) || desc.includes(lowerQuery);
+                card.style.display = matches ? 'block' : 'none';
+            });
+        }
+
+        // ============ Actions ============
+        function copyCode() {
+            navigator.clipboard.writeText(codeEditor.value);
+            showToast('Code copied to clipboard!');
+        }
+
+        function formatCode() {
+            // Basic formatting - add consistent indentation
+            let code = codeEditor.value;
+            const lines = code.split('\n');
+            let indentLevel = 0;
+
+            const formatted = lines.map(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('end') || trimmed.startsWith('}')) {
+                    indentLevel = Math.max(0, indentLevel - 1);
+                }
+
+                const result = '    '.repeat(indentLevel) + trimmed;
+
+                if (trimmed.includes('subgraph') || trimmed.includes('{') || trimmed.startsWith('section')) {
+                    indentLevel++;
+                }
+
+                return result;
+            });
+
+            codeEditor.value = formatted.join('\n');
+            updateLineNumbers();
+            renderDiagram();
+            showToast('Code formatted!');
+        }
+
+        function exportSVG() {
+            const svg = mermaidOutput.querySelector('svg');
+            if (!svg) {
+                showToast('No diagram to export!');
+                return;
+            }
+
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const blob = new Blob([svgData], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.download = 'diagram.svg';
+            link.href = url;
+            link.click();
+
+            URL.revokeObjectURL(url);
+            showToast('SVG exported!');
+        }
+
+        function exportPNG() {
+            const svg = mermaidOutput.querySelector('svg');
+            if (!svg) {
+                showToast('No diagram to export!');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const img = new Image();
+
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                canvas.width = img.width * 2;
+                canvas.height = img.height * 2;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const link = document.createElement('a');
+                link.download = 'diagram.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                URL.revokeObjectURL(url);
+                showToast('PNG exported!');
+            };
+
+            img.src = url;
+        }
+
+        function toggleFullscreen() {
+            state.isFullscreen = !state.isFullscreen;
+            mainContent.classList.toggle('fullscreen', state.isFullscreen);
+            resizer.style.display = state.isFullscreen ? 'none' : 'block';
+        }
+
+        function zoom(delta) {
+            state.zoom = Math.max(0.25, Math.min(3, state.zoom + delta));
+            updateZoom();
+        }
+
+        function updateZoom() {
+            zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
+            const svg = mermaidOutput.querySelector('svg');
+            if (svg) {
+                svg.style.transform = `scale(${state.zoom})`;
+                svg.style.transformOrigin = 'center center';
+            }
+        }
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

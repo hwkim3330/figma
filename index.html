@@ -3,808 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DesignFlow - Professional Design Tool</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>DesignFlow - Design Tools Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://unpkg.com/qrious@4.0.2/dist/qrious.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-size: 48px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .tagline {
+            font-size: 20px;
+            color: rgba(255,255,255,0.9);
+            font-weight: 400;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .tool-card.basic::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .tool-card.advanced::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .tool-card.mermaid::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+        .tool-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .tool-card.basic .tool-icon { background: linear-gradient(135deg, #10b981, #34d399); }
+        .tool-card.advanced .tool-icon { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
+        .tool-card.mermaid .tool-icon { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+
+        .tool-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .tool-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .tool-version {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .tool-card.basic .tool-version { background: #d1fae5; color: #059669; }
+        .tool-card.advanced .tool-version { background: #dbeafe; color: #2563eb; }
+        .tool-card.mermaid .tool-version { background: #ede9fe; color: #7c3aed; }
+
+        .tool-desc {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .tool-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .feature-tag {
+            padding: 6px 12px;
+            background: #f3f4f6;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #4b5563;
+        }
+
+        .arrow-icon {
+            position: absolute;
+            bottom: 32px;
+            right: 32px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .tool-card:hover .arrow-icon {
+            background: #1f2937;
+        }
+
+        .arrow-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: #6b7280;
+            transition: stroke 0.3s ease;
+        }
+
+        .tool-card:hover .arrow-icon svg {
+            stroke: white;
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+        }
+
+        footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 30px;
+            transition: background 0.3s ease;
+        }
+
+        .github-link:hover {
+            background: rgba(255,255,255,0.2);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .logo { font-size: 36px; }
+            .tagline { font-size: 16px; }
+            .tools-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
-    <!-- Top Header with Tabs -->
-    <div class="app-header">
-        <div class="header-left">
+    <div class="container">
+        <header>
             <h1 class="logo">DesignFlow</h1>
-            <div class="main-tabs">
-                <button class="main-tab active" data-tab="design">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <p class="tagline">Professional Design Tools for Everyone</p>
+        </header>
+
+        <div class="tools-grid">
+            <!-- Basic Version -->
+            <a href="v1-basic.html" class="tool-card basic">
+                <div class="tool-icon">
+                    <svg viewBox="0 0 24 24">
                         <rect x="3" y="3" width="18" height="18" rx="2"/>
                         <circle cx="8.5" cy="8.5" r="1.5"/>
                         <path d="M21 15l-5-5L5 21"/>
                     </svg>
-                    Design
-                </button>
-                <button class="main-tab" data-tab="mermaid">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                </div>
+                <h2 class="tool-title">Basic Canvas</h2>
+                <span class="tool-version">v1.0</span>
+                <p class="tool-desc">
+                    Simple and fast drawing tool. Create basic shapes, add colors,
+                    and export your designs. Perfect for quick sketches.
+                </p>
+                <div class="tool-features">
+                    <span class="feature-tag">Shapes</span>
+                    <span class="feature-tag">Colors</span>
+                    <span class="feature-tag">Export</span>
+                    <span class="feature-tag">Layers</span>
+                </div>
+                <div class="arrow-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+
+            <!-- Advanced Version -->
+            <a href="v2-advanced.html" class="tool-card advanced">
+                <div class="tool-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2l10 10-10 10L2 12z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </div>
+                <h2 class="tool-title">Pro Designer</h2>
+                <span class="tool-version">v2.0</span>
+                <p class="tool-desc">
+                    Advanced design tool with professional features. Pen tool,
+                    gradients, effects, components, and real-time collaboration.
+                </p>
+                <div class="tool-features">
+                    <span class="feature-tag">Pen Tool</span>
+                    <span class="feature-tag">Gradients</span>
+                    <span class="feature-tag">Effects</span>
+                    <span class="feature-tag">Collab</span>
+                </div>
+                <div class="arrow-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+
+            <!-- Mermaid Version -->
+            <a href="v3-mermaid.html" class="tool-card mermaid">
+                <div class="tool-icon">
+                    <svg viewBox="0 0 24 24">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
                         <path d="M12 18v-6"/>
                         <path d="M8 18v-1"/>
                         <path d="M16 18v-3"/>
                     </svg>
-                    Mermaid
-                </button>
-            </div>
-        </div>
-        <div class="header-right">
-            <div class="theme-toggle">
-                <button class="icon-btn" id="theme-toggle-btn" title="Toggle Theme">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sun-icon">
-                        <circle cx="12" cy="12" r="5"/>
-                        <line x1="12" y1="1" x2="12" y2="3"/>
-                        <line x1="12" y1="21" x2="12" y2="23"/>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                        <line x1="1" y1="12" x2="3" y2="12"/>
-                        <line x1="21" y1="12" x2="23" y2="12"/>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                    </svg>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="moon-icon" style="display:none;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="collab-section">
-                <button class="btn-primary" id="share-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="18" cy="5" r="3"/>
-                        <circle cx="6" cy="12" r="3"/>
-                        <circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                    </svg>
-                    Share
-                </button>
-                <div class="peer-info">
-                    <span id="my-peer-id"></span>
-                    <div id="connected-peers"></div>
                 </div>
-            </div>
+                <h2 class="tool-title">Diagram Editor</h2>
+                <span class="tool-version">v3.0</span>
+                <p class="tool-desc">
+                    Create beautiful diagrams with Mermaid syntax. Flowcharts,
+                    sequence diagrams, mind maps, and more with live preview.
+                </p>
+                <div class="tool-features">
+                    <span class="feature-tag">Mermaid</span>
+                    <span class="feature-tag">Templates</span>
+                    <span class="feature-tag">Themes</span>
+                    <span class="feature-tag">Export</span>
+                </div>
+                <div class="arrow-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
         </div>
+
+        <footer>
+            <p>Open Source Design Tools</p>
+            <a href="https://github.com/hwkim3330/figma" class="github-link" target="_blank">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                View on GitHub
+            </a>
+        </footer>
     </div>
-
-    <!-- Design Tab Content -->
-    <div class="tab-content active" id="design-tab">
-        <!-- Design Toolbar -->
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <div class="tool-group">
-                    <button class="tool-btn active" data-tool="select" title="Select (V)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="rectangle" title="Rectangle (R)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="circle" title="Circle (O)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="line" title="Line (L)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="5" y1="19" x2="19" y2="5"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="text" title="Text (T)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="4 7 4 4 20 4 20 7"/>
-                            <line x1="9" y1="20" x2="15" y2="20"/>
-                            <line x1="12" y1="4" x2="12" y2="20"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="triangle" title="Triangle">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2l10 20H2z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="star" title="Star (S)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="arrow" title="Arrow (A)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="19" x2="12" y2="5"/>
-                            <polyline points="5 12 12 5 19 12"/>
-                        </svg>
-                    </button>
-                    <div class="separator"></div>
-                    <button class="tool-btn" data-tool="diamond" title="Diamond">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2l10 10-10 10L2 12z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="parallelogram" title="Parallelogram">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 5h12l6 14H12z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="hexagon" title="Hexagon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2l6 4v12l-6 4-6-4V6z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="cylinder" title="Cylinder">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="cloud" title="Cloud">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="connector" title="Connector">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="5" y1="12" x2="19" y2="12"/>
-                            <polyline points="12 5 19 12 12 19"/>
-                        </svg>
-                    </button>
-                    <div class="separator"></div>
-                    <button class="tool-btn" data-tool="pen" title="Pen (P)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 19l7-7 3 3-7 7-3-3z"/>
-                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                            <path d="M2 2l7.586 7.586"/>
-                            <circle cx="11" cy="11" r="2"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="pencil" title="Pencil (B)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="frame" title="Frame (F)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/>
-                            <line x1="3" y1="9" x2="21" y2="9"/>
-                            <line x1="9" y1="21" x2="9" y2="9"/>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-tool="image" title="Image (I)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="separator"></div>
-                <div class="tool-group">
-                    <button class="icon-btn" id="group-btn" title="Group (Ctrl+G)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"/>
-                            <rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/>
-                            <rect x="3" y="14" width="7" height="7"/>
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="ungroup-btn" title="Ungroup (Ctrl+Shift+G)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/>
-                            <line x1="10" y1="7" x2="14" y2="7"/>
-                            <line x1="7" y1="10" x2="7" y2="14"/>
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="component-btn" title="Create Component (Ctrl+Alt+K)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/>
-                            <path d="M12 8v8M8 12h8"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="separator"></div>
-                <div class="tool-group">
-                    <button class="icon-btn" id="align-left-btn" title="Align Left">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <line x1="3" y1="12" x2="15" y2="12"/>
-                            <line x1="3" y1="18" x2="18" y2="18"/>
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="align-center-btn" title="Align Center">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <line x1="6" y1="12" x2="18" y2="12"/>
-                            <line x1="5" y1="18" x2="19" y2="18"/>
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="align-right-btn" title="Align Right">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <line x1="9" y1="12" x2="21" y2="12"/>
-                            <line x1="6" y1="18" x2="21" y2="18"/>
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="distribute-h-btn" title="Distribute Horizontally">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="8" width="4" height="8"/>
-                            <rect x="10" y="8" width="4" height="8"/>
-                            <rect x="17" y="8" width="4" height="8"/>
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="distribute-v-btn" title="Distribute Vertically">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="8" y="3" width="8" height="4"/>
-                            <rect x="8" y="10" width="8" height="4"/>
-                            <rect x="8" y="17" width="8" height="4"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div class="toolbar-center">
-                <button class="icon-btn" id="undo-btn" title="Undo (Ctrl+Z)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 7v6h6"/>
-                        <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
-                    </svg>
-                </button>
-                <button class="icon-btn" id="redo-btn" title="Redo (Ctrl+Y)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 7v6h-6"/>
-                        <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/>
-                    </svg>
-                </button>
-                <div class="separator"></div>
-                <button class="icon-btn" id="zoom-out-btn" title="Zoom Out (-)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="M21 21l-4.35-4.35"/>
-                        <line x1="8" y1="11" x2="14" y2="11"/>
-                    </svg>
-                </button>
-                <span class="zoom-level" id="zoom-level">100%</span>
-                <button class="icon-btn" id="zoom-in-btn" title="Zoom In (+)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="M21 21l-4.35-4.35"/>
-                        <line x1="11" y1="8" x2="11" y2="14"/>
-                        <line x1="8" y1="11" x2="14" y2="11"/>
-                    </svg>
-                </button>
-                <button class="icon-btn" id="zoom-fit-btn" title="Fit to Screen">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="toolbar-right">
-                <button class="icon-btn" id="grid-btn" title="Toggle Grid (G)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <line x1="3" y1="9" x2="21" y2="9"/>
-                        <line x1="3" y1="15" x2="21" y2="15"/>
-                        <line x1="9" y1="3" x2="9" y2="21"/>
-                        <line x1="15" y1="3" x2="15" y2="21"/>
-                    </svg>
-                </button>
-                <button class="icon-btn active" id="snap-btn" title="Smart Guides">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="2"/>
-                        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
-                    </svg>
-                </button>
-                <button class="icon-btn" id="prototype-btn" title="Prototype Mode">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                </button>
-                <div class="separator"></div>
-                <button class="btn-primary" id="export-btn">Export</button>
-            </div>
-        </div>
-
-        <!-- Design Main Content -->
-        <div class="main-content">
-            <div class="sidebar sidebar-left">
-                <div class="sidebar-header">
-                    <h3>Layers</h3>
-                    <button class="icon-btn" id="delete-layer-btn" title="Delete Selected">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="layers-panel" id="layers-panel"></div>
-            </div>
-
-            <div class="canvas-container">
-                <canvas id="canvas"></canvas>
-                <div class="canvas-overlay" id="canvas-overlay"></div>
-            </div>
-
-            <div class="sidebar sidebar-right">
-                <div class="sidebar-header">
-                    <h3>Properties</h3>
-                </div>
-                <div class="properties-panel" id="properties-panel">
-                    <div class="property-group">
-                        <label>Fill</label>
-                        <div class="color-input-group">
-                            <input type="color" id="fill-color" value="#0d99ff">
-                            <input type="text" id="fill-color-text" value="#0d99ff">
-                        </div>
-                    </div>
-                    <div class="property-group">
-                        <label>Stroke</label>
-                        <div class="color-input-group">
-                            <input type="color" id="stroke-color" value="#333333">
-                            <input type="text" id="stroke-color-text" value="#333333">
-                        </div>
-                        <label>Stroke Width</label>
-                        <input type="range" id="stroke-width" min="0" max="20" value="1">
-                        <span id="stroke-width-value">1px</span>
-                    </div>
-                    <div class="property-group" id="transform-group" style="display: none;">
-                        <label>Position</label>
-                        <div class="input-row">
-                            <div class="input-with-label">
-                                <span>X</span>
-                                <input type="number" id="pos-x" value="0">
-                            </div>
-                            <div class="input-with-label">
-                                <span>Y</span>
-                                <input type="number" id="pos-y" value="0">
-                            </div>
-                        </div>
-                        <label>Size</label>
-                        <div class="input-row">
-                            <div class="input-with-label">
-                                <span>W</span>
-                                <input type="number" id="size-w" value="0">
-                            </div>
-                            <div class="input-with-label">
-                                <span>H</span>
-                                <input type="number" id="size-h" value="0">
-                            </div>
-                        </div>
-                        <label>Rotation</label>
-                        <input type="range" id="rotation" min="0" max="360" value="0">
-                        <span id="rotation-value">0°</span>
-                        <label>Opacity</label>
-                        <input type="range" id="opacity" min="0" max="100" value="100">
-                        <span id="opacity-value">100%</span>
-                        <label>Corner Radius</label>
-                        <input type="range" id="corner-radius" min="0" max="100" value="0">
-                        <span id="corner-radius-value">0px</span>
-                    </div>
-                    <div class="property-group" id="text-group" style="display: none;">
-                        <label>Font Size</label>
-                        <input type="range" id="font-size" min="8" max="200" value="32">
-                        <span id="font-size-value">32px</span>
-                        <label>Font Family</label>
-                        <select id="font-family">
-                            <option value="Arial">Arial</option>
-                            <option value="Helvetica">Helvetica</option>
-                            <option value="Inter">Inter</option>
-                            <option value="Times New Roman">Times New Roman</option>
-                            <option value="Courier New">Courier New</option>
-                            <option value="Verdana">Verdana</option>
-                            <option value="Georgia">Georgia</option>
-                        </select>
-                    </div>
-                    <div class="property-group collapsible" id="effects-group" style="display: none;">
-                        <div class="property-header">
-                            <label>Effects</label>
-                            <button class="icon-btn-small" id="add-effect-btn" title="Add Effect">+</button>
-                        </div>
-                        <div class="effect-item">
-                            <label>Shadow</label>
-                            <div class="shadow-controls">
-                                <div class="input-row">
-                                    <div class="input-with-label">
-                                        <span>X</span>
-                                        <input type="number" id="shadow-x" value="0" class="small-input">
-                                    </div>
-                                    <div class="input-with-label">
-                                        <span>Y</span>
-                                        <input type="number" id="shadow-y" value="4" class="small-input">
-                                    </div>
-                                </div>
-                                <div class="input-row">
-                                    <div class="input-with-label">
-                                        <span>Blur</span>
-                                        <input type="number" id="shadow-blur" value="8" class="small-input">
-                                    </div>
-                                    <div class="input-with-label">
-                                        <span>Spread</span>
-                                        <input type="number" id="shadow-spread" value="0" class="small-input">
-                                    </div>
-                                </div>
-                                <div class="color-input-group">
-                                    <input type="color" id="shadow-color" value="#000000">
-                                    <input type="text" id="shadow-opacity" value="25" style="width:40px">
-                                    <span>%</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="effect-item">
-                            <label>Blur</label>
-                            <input type="range" id="blur-amount" min="0" max="50" value="0">
-                            <span id="blur-value">0px</span>
-                        </div>
-                        <div class="effect-item">
-                            <label>Blend Mode</label>
-                            <select id="blend-mode">
-                                <option value="source-over">Normal</option>
-                                <option value="multiply">Multiply</option>
-                                <option value="screen">Screen</option>
-                                <option value="overlay">Overlay</option>
-                                <option value="darken">Darken</option>
-                                <option value="lighten">Lighten</option>
-                                <option value="color-dodge">Color Dodge</option>
-                                <option value="color-burn">Color Burn</option>
-                                <option value="hard-light">Hard Light</option>
-                                <option value="soft-light">Soft Light</option>
-                                <option value="difference">Difference</option>
-                                <option value="exclusion">Exclusion</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="property-group collapsible" id="gradient-group" style="display: none;">
-                        <div class="property-header">
-                            <label>Gradient Fill</label>
-                            <input type="checkbox" id="gradient-enabled">
-                        </div>
-                        <div class="gradient-controls">
-                            <select id="gradient-type">
-                                <option value="linear">Linear</option>
-                                <option value="radial">Radial</option>
-                            </select>
-                            <div class="gradient-preview" id="gradient-preview"></div>
-                            <label>Angle</label>
-                            <input type="range" id="gradient-angle" min="0" max="360" value="90">
-                            <span id="gradient-angle-value">90°</span>
-                            <div class="gradient-stops" id="gradient-stops">
-                                <div class="gradient-stop">
-                                    <input type="color" class="stop-color" value="#0d99ff" data-index="0">
-                                    <span>0%</span>
-                                </div>
-                                <div class="gradient-stop">
-                                    <input type="color" class="stop-color" value="#7c3aed" data-index="1">
-                                    <span>100%</span>
-                                </div>
-                            </div>
-                            <div class="gradient-presets">
-                                <button class="preset-btn" data-preset="sunset" title="Sunset"></button>
-                                <button class="preset-btn" data-preset="ocean" title="Ocean"></button>
-                                <button class="preset-btn" data-preset="forest" title="Forest"></button>
-                                <button class="preset-btn" data-preset="fire" title="Fire"></button>
-                                <button class="preset-btn" data-preset="midnight" title="Midnight"></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="property-group" id="auto-layout-group" style="display: none;">
-                        <div class="property-header">
-                            <label>Auto Layout</label>
-                            <input type="checkbox" id="auto-layout-enabled">
-                        </div>
-                        <div class="auto-layout-controls">
-                            <div class="direction-toggle">
-                                <button class="dir-btn active" data-dir="horizontal">→</button>
-                                <button class="dir-btn" data-dir="vertical">↓</button>
-                            </div>
-                            <div class="input-row">
-                                <div class="input-with-label">
-                                    <span>Gap</span>
-                                    <input type="number" id="layout-gap" value="10" class="small-input">
-                                </div>
-                                <div class="input-with-label">
-                                    <span>Pad</span>
-                                    <input type="number" id="layout-padding" value="10" class="small-input">
-                                </div>
-                            </div>
-                            <label>Alignment</label>
-                            <div class="alignment-grid">
-                                <button class="align-btn" data-align="start">⬅</button>
-                                <button class="align-btn active" data-align="center">⬛</button>
-                                <button class="align-btn" data-align="end">➡</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mermaid Tab Content -->
-    <div class="tab-content" id="mermaid-tab">
-        <!-- Mermaid Toolbar -->
-        <div class="mermaid-toolbar">
-            <div class="toolbar-left">
-                <button class="mermaid-btn mermaid-btn-primary" id="mermaid-templates-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="3" y1="9" x2="21" y2="9"/>
-                        <line x1="9" y1="21" x2="9" y2="9"/>
-                    </svg>
-                    Templates
-                </button>
-                <select id="mermaid-diagram-type" class="mermaid-select">
-                    <option value="flowchart">Flowchart</option>
-                    <option value="sequence">Sequence</option>
-                    <option value="class">Class</option>
-                    <option value="state">State</option>
-                    <option value="er">ER Diagram</option>
-                    <option value="journey">User Journey</option>
-                    <option value="gantt">Gantt</option>
-                    <option value="pie">Pie Chart</option>
-                    <option value="mindmap">Mind Map</option>
-                    <option value="timeline">Timeline</option>
-                    <option value="gitgraph">Git Graph</option>
-                    <option value="quadrant">Quadrant</option>
-                    <option value="sankey">Sankey</option>
-                    <option value="xy">XY Chart</option>
-                </select>
-                <select id="mermaid-theme-select" class="mermaid-select">
-                    <option value="default">Default Theme</option>
-                    <option value="dark">Dark Theme</option>
-                    <option value="forest">Forest Theme</option>
-                    <option value="neutral">Neutral Theme</option>
-                    <option value="base">Base Theme</option>
-                </select>
-            </div>
-            <div class="toolbar-center">
-                <button class="icon-btn" id="mermaid-undo-btn" title="Undo">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
-                    </svg>
-                </button>
-                <button class="icon-btn" id="mermaid-redo-btn" title="Redo">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
-                    </svg>
-                </button>
-                <div class="separator"></div>
-                <button class="icon-btn" id="mermaid-zoom-out-btn" title="Zoom Out">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/>
-                    </svg>
-                </button>
-                <span class="zoom-level" id="mermaid-zoom-level">100%</span>
-                <button class="icon-btn" id="mermaid-zoom-in-btn" title="Zoom In">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
-                    </svg>
-                </button>
-                <button class="icon-btn" id="mermaid-zoom-fit-btn" title="Fit to View">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="toolbar-right">
-                <label class="mermaid-checkbox">
-                    <input type="checkbox" id="mermaid-auto-render" checked>
-                    <span>Live Preview</span>
-                </label>
-                <button class="mermaid-btn" id="mermaid-render-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                    Render
-                </button>
-                <div class="separator"></div>
-                <button class="mermaid-btn" id="mermaid-export-svg-btn">SVG</button>
-                <button class="mermaid-btn" id="mermaid-export-png-btn">PNG</button>
-                <button class="mermaid-btn" id="mermaid-export-pdf-btn">PDF</button>
-            </div>
-        </div>
-
-        <!-- Mermaid Main Content -->
-        <div class="mermaid-main">
-            <!-- Code Editor Panel -->
-            <div class="mermaid-code-panel">
-                <div class="panel-header">
-                    <span>Code Editor</span>
-                    <div class="panel-actions">
-                        <button class="icon-btn-small" id="mermaid-format-btn" title="Format Code">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/>
-                            </svg>
-                        </button>
-                        <button class="icon-btn-small" id="mermaid-copy-btn" title="Copy Code">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="code-editor-wrapper">
-                    <div class="line-numbers" id="line-numbers"></div>
-                    <textarea id="mermaid-code" spellcheck="false" placeholder="Enter Mermaid code here...
-
-Example:
-flowchart TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[OK]
-    B -->|No| D[Cancel]"></textarea>
-                </div>
-                <div class="error-panel" id="mermaid-error-panel"></div>
-            </div>
-
-            <!-- Preview Panel -->
-            <div class="mermaid-preview-panel">
-                <div class="panel-header">
-                    <span>Preview</span>
-                    <div class="panel-actions">
-                        <button class="icon-btn-small" id="mermaid-fullscreen-btn" title="Fullscreen">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="preview-wrapper" id="mermaid-preview-wrapper">
-                    <div class="mermaid-output" id="mermaid-output">
-                        <div class="empty-state">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <path d="M12 18v-6"/>
-                                <path d="M8 18v-1"/>
-                                <path d="M16 18v-3"/>
-                            </svg>
-                            <p>Enter Mermaid code or select a template</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Templates Modal -->
-    <div class="modal" id="templates-modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Diagram Templates</h2>
-                <button class="close-btn" id="close-templates-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="templates-search">
-                    <input type="text" id="template-search" placeholder="Search templates...">
-                </div>
-                <div class="templates-grid" id="templates-grid">
-                    <!-- Templates will be populated by JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Share Modal -->
-    <div class="modal" id="share-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Share Design</h2>
-                <button class="close-btn" id="close-share-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="share-section">
-                    <label>Your Peer ID</label>
-                    <div class="copy-input-group">
-                        <input type="text" id="my-id-display" readonly />
-                        <button class="btn-copy" id="copy-id-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                            </svg>
-                            Copy
-                        </button>
-                    </div>
-                </div>
-                <div class="share-section">
-                    <label>Share Link</label>
-                    <div class="copy-input-group">
-                        <input type="text" id="share-url-display" readonly />
-                        <button class="btn-copy" id="copy-url-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                            </svg>
-                            Copy Link
-                        </button>
-                    </div>
-                    <p class="share-hint">Anyone with this link can join your design session</p>
-                </div>
-                <div class="share-section">
-                    <label>QR Code</label>
-                    <div class="qr-container">
-                        <canvas id="qr-canvas"></canvas>
-                    </div>
-                    <button class="btn-secondary" id="download-qr-btn">Download QR Code</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export Modal -->
-    <div class="modal" id="export-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Export Design</h2>
-                <button class="close-btn" id="close-export-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="export-options">
-                    <button class="export-btn" id="export-png">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        <span>Export as PNG</span>
-                    </button>
-                    <button class="export-btn" id="export-svg">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        <span>Export as SVG</span>
-                    </button>
-                    <button class="export-btn" id="export-json">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="12" y1="18" x2="12" y2="12"/>
-                            <line x1="9" y1="15" x2="15" y2="15"/>
-                        </svg>
-                        <span>Save as JSON</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Context Menu -->
-    <div class="context-menu" id="context-menu">
-        <div class="context-menu-item" id="ctx-copy">
-            <span>Copy</span>
-            <span class="shortcut">Ctrl+C</span>
-        </div>
-        <div class="context-menu-item" id="ctx-paste">
-            <span>Paste</span>
-            <span class="shortcut">Ctrl+V</span>
-        </div>
-        <div class="context-menu-item" id="ctx-duplicate">
-            <span>Duplicate</span>
-            <span class="shortcut">Ctrl+D</span>
-        </div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" id="ctx-delete">
-            <span>Delete</span>
-            <span class="shortcut">Del</span>
-        </div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" id="ctx-bring-front">
-            <span>Bring to Front</span>
-        </div>
-        <div class="context-menu-item" id="ctx-send-back">
-            <span>Send to Back</span>
-        </div>
-    </div>
-
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
-
-    <script type="module" src="js/app.js"></script>
 </body>
 </html>
