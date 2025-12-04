@@ -3,72 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DesignFlow - Design Tools Hub</title>
+    <title>DesignFlow - Design Tools Collection</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0f0f0f;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
+            color: white;
         }
 
-        .container {
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        header {
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f0f 100%);
+            padding: 80px 20px;
             text-align: center;
-            margin-bottom: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
         .logo {
-            font-size: 48px;
+            font-size: 56px;
             font-weight: 700;
-            color: white;
-            margin-bottom: 16px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
         }
 
         .tagline {
-            font-size: 20px;
-            color: rgba(255,255,255,0.9);
-            font-weight: 400;
+            font-size: 22px;
+            color: #9ca3af;
+            margin-bottom: 32px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 40px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #8b5cf6;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .section-heading {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 48px;
         }
 
         .tools-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 24px;
-            margin-bottom: 60px;
         }
 
         .tool-card {
-            background: white;
-            border-radius: 20px;
-            padding: 32px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 24px;
+            padding: 36px;
             text-decoration: none;
             color: inherit;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
         }
 
         .tool-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            transform: translateY(-4px);
+            border-color: #3a3a3a;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
         }
 
         .tool-card::before {
@@ -77,191 +129,233 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
+            height: 3px;
         }
 
         .tool-card.basic::before { background: linear-gradient(90deg, #10b981, #34d399); }
-        .tool-card.advanced::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-        .tool-card.mermaid::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .tool-card.pro::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+        .tool-card.mermaid::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .tool-card.whiteboard::before { background: linear-gradient(90deg, #ec4899, #f472b6); }
 
-        .tool-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
+        .tool-header {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
             margin-bottom: 20px;
         }
 
-        .tool-card.basic .tool-icon { background: linear-gradient(135deg, #10b981, #34d399); }
-        .tool-card.advanced .tool-icon { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
-        .tool-card.mermaid .tool-icon { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+        .tool-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tool-card.basic .tool-icon { background: linear-gradient(135deg, #10b981, #059669); }
+        .tool-card.pro .tool-icon { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .tool-card.mermaid .tool-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .tool-card.whiteboard .tool-icon { background: linear-gradient(135deg, #ec4899, #db2777); }
 
         .tool-icon svg {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             stroke: white;
             stroke-width: 2;
             fill: none;
         }
 
+        .tool-info { flex: 1; }
+
         .tool-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 600;
-            margin-bottom: 12px;
-            color: #1f2937;
+            margin-bottom: 4px;
         }
 
-        .tool-version {
+        .tool-badge {
             display: inline-block;
             padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: 600;
-            margin-bottom: 16px;
+            text-transform: uppercase;
         }
 
-        .tool-card.basic .tool-version { background: #d1fae5; color: #059669; }
-        .tool-card.advanced .tool-version { background: #dbeafe; color: #2563eb; }
-        .tool-card.mermaid .tool-version { background: #ede9fe; color: #7c3aed; }
+        .tool-card.basic .tool-badge { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .tool-card.pro .tool-badge { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+        .tool-card.mermaid .tool-badge { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .tool-card.whiteboard .tool-badge { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
 
         .tool-desc {
-            color: #6b7280;
-            line-height: 1.6;
-            margin-bottom: 20px;
+            color: #9ca3af;
+            line-height: 1.7;
+            margin-bottom: 24px;
         }
 
         .tool-features {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
         }
 
         .feature-tag {
-            padding: 6px 12px;
-            background: #f3f4f6;
+            padding: 8px 14px;
+            background: #252525;
             border-radius: 20px;
             font-size: 13px;
-            color: #4b5563;
+            color: #d1d5db;
         }
 
-        .arrow-icon {
+        .arrow-btn {
             position: absolute;
-            bottom: 32px;
-            right: 32px;
-            width: 40px;
-            height: 40px;
+            bottom: 36px;
+            right: 36px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            background: #f3f4f6;
+            background: #252525;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
         }
 
-        .tool-card:hover .arrow-icon {
-            background: #1f2937;
-        }
+        .tool-card:hover .arrow-btn { background: #8b5cf6; }
 
-        .arrow-icon svg {
+        .arrow-btn svg {
             width: 20px;
             height: 20px;
-            stroke: #6b7280;
+            stroke: #9ca3af;
             transition: stroke 0.3s ease;
         }
 
-        .tool-card:hover .arrow-icon svg {
-            stroke: white;
-        }
+        .tool-card:hover .arrow-btn svg { stroke: white; }
 
         footer {
+            border-top: 1px solid #2a2a2a;
+            padding: 40px 20px;
             text-align: center;
-            color: rgba(255,255,255,0.8);
         }
 
-        footer a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        footer a:hover {
-            text-decoration: underline;
+        .footer-text {
+            color: #6b7280;
+            font-size: 14px;
         }
 
         .github-link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-top: 16px;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 30px;
-            transition: background 0.3s ease;
+            padding: 10px 20px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
         }
 
         .github-link:hover {
-            background: rgba(255,255,255,0.2);
-            text-decoration: none;
+            border-color: #8b5cf6;
+            background: #252525;
         }
 
-        @media (max-width: 768px) {
-            .logo { font-size: 36px; }
-            .tagline { font-size: 16px; }
+        @media (max-width: 900px) {
             .tools-grid { grid-template-columns: 1fr; }
+            .logo { font-size: 40px; }
+            .stats { gap: 24px; }
+            .footer-content { flex-direction: column; gap: 20px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
+    <div class="hero">
+        <div class="hero-content">
             <h1 class="logo">DesignFlow</h1>
-            <p class="tagline">Professional Design Tools for Everyone</p>
-        </header>
+            <p class="tagline">Professional Design Tools - No Login Required</p>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">Tools</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Free</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Dependencies</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section-title">Tools</div>
+        <h2 class="section-heading">Choose Your Tool</h2>
 
         <div class="tools-grid">
-            <!-- Basic Version -->
-            <a href="v1-basic.html" class="tool-card basic">
-                <div class="tool-icon">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <path d="M21 15l-5-5L5 21"/>
-                    </svg>
+            <!-- Basic Canvas -->
+            <a href="basic/" class="tool-card basic">
+                <div class="tool-header">
+                    <div class="tool-icon">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                    </div>
+                    <div class="tool-info">
+                        <h3 class="tool-title">Basic Canvas</h3>
+                        <span class="tool-badge">Beginner</span>
+                    </div>
                 </div>
-                <h2 class="tool-title">Basic Canvas</h2>
-                <span class="tool-version">v1.0</span>
                 <p class="tool-desc">
-                    Simple and fast drawing tool. Create basic shapes, add colors,
-                    and export your designs. Perfect for quick sketches.
+                    Simple and fast drawing tool for quick sketches. Perfect for
+                    beginners who want to create basic designs without complexity.
                 </p>
                 <div class="tool-features">
                     <span class="feature-tag">Shapes</span>
                     <span class="feature-tag">Colors</span>
-                    <span class="feature-tag">Export</span>
                     <span class="feature-tag">Layers</span>
+                    <span class="feature-tag">Export PNG</span>
                 </div>
-                <div class="arrow-icon">
+                <div class="arrow-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                 </div>
             </a>
 
-            <!-- Advanced Version -->
-            <a href="v2-advanced.html" class="tool-card advanced">
-                <div class="tool-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 2l10 10-10 10L2 12z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                    </svg>
+            <!-- Pro Designer -->
+            <a href="pro/" class="tool-card pro">
+                <div class="tool-header">
+                    <div class="tool-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2l10 10-10 10L2 12z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </div>
+                    <div class="tool-info">
+                        <h3 class="tool-title">Pro Designer</h3>
+                        <span class="tool-badge">Advanced</span>
+                    </div>
                 </div>
-                <h2 class="tool-title">Pro Designer</h2>
-                <span class="tool-version">v2.0</span>
                 <p class="tool-desc">
-                    Advanced design tool with professional features. Pen tool,
-                    gradients, effects, components, and real-time collaboration.
+                    Full-featured design tool with pen tool, gradients, effects,
+                    and real-time collaboration via WebRTC.
                 </p>
                 <div class="tool-features">
                     <span class="feature-tag">Pen Tool</span>
@@ -269,53 +363,89 @@
                     <span class="feature-tag">Effects</span>
                     <span class="feature-tag">Collab</span>
                 </div>
-                <div class="arrow-icon">
+                <div class="arrow-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                 </div>
             </a>
 
-            <!-- Mermaid Version -->
-            <a href="v3-mermaid.html" class="tool-card mermaid">
-                <div class="tool-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <path d="M12 18v-6"/>
-                        <path d="M8 18v-1"/>
-                        <path d="M16 18v-3"/>
-                    </svg>
+            <!-- Mermaid Editor -->
+            <a href="mermaid/" class="tool-card mermaid">
+                <div class="tool-header">
+                    <div class="tool-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M12 18v-6"/>
+                            <path d="M8 18v-1"/>
+                            <path d="M16 18v-3"/>
+                        </svg>
+                    </div>
+                    <div class="tool-info">
+                        <h3 class="tool-title">Diagram Editor</h3>
+                        <span class="tool-badge">Mermaid</span>
+                    </div>
                 </div>
-                <h2 class="tool-title">Diagram Editor</h2>
-                <span class="tool-version">v3.0</span>
                 <p class="tool-desc">
-                    Create beautiful diagrams with Mermaid syntax. Flowcharts,
-                    sequence diagrams, mind maps, and more with live preview.
+                    Create flowcharts, sequence diagrams, mind maps, and more
+                    with Mermaid syntax. Live preview with 12+ templates.
                 </p>
                 <div class="tool-features">
-                    <span class="feature-tag">Mermaid</span>
+                    <span class="feature-tag">11 Types</span>
                     <span class="feature-tag">Templates</span>
                     <span class="feature-tag">Themes</span>
-                    <span class="feature-tag">Export</span>
+                    <span class="feature-tag">SVG/PNG</span>
                 </div>
-                <div class="arrow-icon">
+                <div class="arrow-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+
+            <!-- Whiteboard -->
+            <a href="whiteboard/" class="tool-card whiteboard">
+                <div class="tool-header">
+                    <div class="tool-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </div>
+                    <div class="tool-info">
+                        <h3 class="tool-title">Whiteboard</h3>
+                        <span class="tool-badge">New</span>
+                    </div>
+                </div>
+                <p class="tool-desc">
+                    Infinite canvas for freehand drawing, sticky notes, and
+                    brainstorming. Touch-friendly with smooth pen strokes.
+                </p>
+                <div class="tool-features">
+                    <span class="feature-tag">Freehand</span>
+                    <span class="feature-tag">Sticky Notes</span>
+                    <span class="feature-tag">Shapes</span>
+                    <span class="feature-tag">Touch</span>
+                </div>
+                <div class="arrow-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                 </div>
             </a>
         </div>
+    </div>
 
-        <footer>
-            <p>Open Source Design Tools</p>
+    <footer>
+        <div class="footer-content">
+            <span class="footer-text">Open Source Design Tools - MIT License</span>
             <a href="https://github.com/hwkim3330/figma" class="github-link" target="_blank">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
-                View on GitHub
+                GitHub
             </a>
-        </footer>
-    </div>
+        </div>
+    </footer>
 </body>
 </html>

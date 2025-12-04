@@ -1,6 +1,6 @@
 # DesignFlow
 
-> Professional Design Tools for Everyone
+> Professional Design Tools - No Login Required
 
 **Live:** https://hwkim3330.github.io/figma
 
@@ -10,17 +10,18 @@
 
 | Tool | Description | Link |
 |------|-------------|------|
-| **Basic Canvas** | Simple drawing tool | [v1-basic.html](v1-basic.html) |
-| **Pro Designer** | Advanced design with effects | [v2-advanced.html](v2-advanced.html) |
-| **Diagram Editor** | Mermaid diagrams | [v3-mermaid.html](v3-mermaid.html) |
+| **Basic Canvas** | Simple drawing tool for beginners | [basic/](basic/) |
+| **Pro Designer** | Advanced design with effects & collaboration | [pro/](pro/) |
+| **Diagram Editor** | Mermaid-powered diagram creation | [mermaid/](mermaid/) |
+| **Whiteboard** | Infinite canvas for freehand drawing | [whiteboard/](whiteboard/) |
 
 ---
 
-## v1 - Basic Canvas
+## Basic Canvas
 
 Simple and fast drawing tool for quick sketches.
 
-### Features
+**Features:**
 - Basic shapes (Rectangle, Circle, Triangle, Line, Text)
 - Color picker for fill and stroke
 - Layers panel with visibility toggle
@@ -28,67 +29,51 @@ Simple and fast drawing tool for quick sketches.
 - Export to PNG
 - Grid display
 
-### Shortcuts
-| Key | Action |
-|-----|--------|
-| V | Select |
-| R | Rectangle |
-| C | Circle |
-| T | Triangle |
-| L | Line |
-| X | Text |
-| Del | Delete |
-| Ctrl+Z | Undo |
-| Ctrl+Y | Redo |
-| Ctrl+D | Duplicate |
-| Ctrl+C/V | Copy/Paste |
-| +/- | Zoom |
+**Shortcuts:**
+| Key | Action | Key | Action |
+|-----|--------|-----|--------|
+| V | Select | Ctrl+Z | Undo |
+| R | Rectangle | Ctrl+Y | Redo |
+| C | Circle | Ctrl+D | Duplicate |
+| T | Triangle | Ctrl+C/V | Copy/Paste |
+| L | Line | Del | Delete |
+| X | Text | +/- | Zoom |
 
 ---
 
-## v2 - Pro Designer
+## Pro Designer
 
 Advanced design tool with professional features.
 
-### Features
+**Features:**
 - All basic shapes + Star, Hexagon, Arrow
 - Pen tool for vector paths
 - Pencil tool for freehand drawing
-- Gradient fills (6 presets: Sunset, Ocean, Forest, Fire, Midnight, Gold)
-- Drop shadow effects
-- Blur effects
-- Opacity and corner radius
-- Rotation control
-- Real-time collaboration via PeerJS
-- Grid and snap-to-grid
+- Gradient fills (6 presets)
+- Drop shadow & blur effects
+- Real-time collaboration via WebRTC
 
-### Shortcuts
-| Key | Action |
-|-----|--------|
-| V | Select |
-| R | Rectangle |
-| C | Circle |
-| P | Pen tool |
-| B | Pencil |
-| S | Star |
-| H | Hexagon |
-| A | Arrow |
-| G | Toggle grid |
+**Shortcuts:**
+| Key | Action | Key | Action |
+|-----|--------|-----|--------|
+| V | Select | S | Star |
+| R | Rectangle | H | Hexagon |
+| C | Circle | A | Arrow |
+| P | Pen tool | G | Toggle grid |
+| B | Pencil | | |
 
-### Collaboration
+**Collaboration:**
 1. Click "Collaborate" button
 2. Copy your Session ID
-3. Share with others
-4. They enter your ID and connect
-5. All changes sync in real-time!
+3. Share with others - they connect instantly!
 
 ---
 
-## v3 - Diagram Editor
+## Diagram Editor
 
 Create beautiful diagrams with Mermaid syntax.
 
-### Diagram Types
+**Supported Diagrams:**
 - Flowchart
 - Sequence Diagram
 - Class Diagram
@@ -101,39 +86,68 @@ Create beautiful diagrams with Mermaid syntax.
 - Timeline
 - Git Graph
 
-### Features
-- Live preview (auto-render)
-- 12+ ready-to-use templates
-- 4 themes (Default, Dark, Forest, Neutral)
-- Code formatting
+**Features:**
+- Live preview
+- 12+ templates
+- 4 themes
 - Export to SVG/PNG
-- Resizable panels
-- Fullscreen mode
-- Zoom controls
+
+---
+
+## Whiteboard
+
+Infinite canvas for freehand drawing and brainstorming.
+
+**Features:**
+- Freehand pen drawing
+- Highlighter tool
+- Eraser
+- Shapes (Rectangle, Circle, Arrow, Line)
+- Sticky notes (5 colors)
+- Text boxes
+- Infinite pan & zoom
+- Touch support
+
+**Shortcuts:**
+| Key | Action | Key | Action |
+|-----|--------|-----|--------|
+| P | Pen | R | Rectangle |
+| H | Highlighter | C | Circle |
+| E | Eraser | A | Arrow |
+| V | Select | L | Line |
+| T | Text | S | Sticky note |
+
+---
+
+## Project Structure
+
+```
+figma/
+├── index.html          # Landing page (tool selector)
+├── basic/
+│   └── index.html      # Basic Canvas
+├── pro/
+│   └── index.html      # Pro Designer
+├── mermaid/
+│   └── index.html      # Diagram Editor
+├── whiteboard/
+│   └── index.html      # Whiteboard
+└── README.md
+```
 
 ---
 
 ## Architecture
 
-```
-figma/
-├── index.html          # Landing page
-├── v1-basic.html       # Basic Canvas (standalone)
-├── v2-advanced.html    # Pro Designer (standalone)
-├── v3-mermaid.html     # Diagram Editor (standalone)
-└── README.md
-```
+**Single-File Design**: Each tool is a standalone HTML file with embedded CSS and JavaScript.
 
-### Design Decisions
-
-**Single-File Architecture**: Each tool is a standalone HTML file with embedded CSS and JavaScript.
-
-Benefits:
-- Zero dependencies
-- No build tools required
-- No module import errors
-- Fast loading (one request)
-- Easy to deploy and maintain
+| Benefit | Description |
+|---------|-------------|
+| Zero dependencies | No npm, no bundler |
+| No build step | Open HTML directly |
+| No errors | No module import issues |
+| Fast loading | Single HTTP request |
+| Easy deploy | Copy and paste |
 
 ---
 
@@ -142,8 +156,9 @@ Benefits:
 | Tool | Technologies |
 |------|--------------|
 | Basic Canvas | Vanilla JS, Canvas API |
-| Pro Designer | Vanilla JS, Canvas API, PeerJS (WebRTC) |
+| Pro Designer | Vanilla JS, Canvas API, PeerJS |
 | Diagram Editor | Vanilla JS, Mermaid.js |
+| Whiteboard | Vanilla JS, Canvas API, Touch API |
 
 ---
 
@@ -170,8 +185,6 @@ npx serve
 
 # Open http://localhost:8000
 ```
-
-No build process needed. Just open any HTML file directly.
 
 ---
 
