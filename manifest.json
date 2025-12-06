@@ -1,0 +1,48 @@
+{
+  "name": "DesignFlow",
+  "short_name": "DesignFlow",
+  "description": "Professional Design Tools - No Login Required",
+  "start_url": "/figma/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#7c3aed",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["design", "productivity", "graphics"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Basic Canvas",
+      "url": "/figma/basic/",
+      "description": "Simple drawing tool"
+    },
+    {
+      "name": "Pro Designer",
+      "url": "/figma/pro/",
+      "description": "Advanced design tool"
+    },
+    {
+      "name": "Diagram Editor",
+      "url": "/figma/mermaid/",
+      "description": "Mermaid diagrams"
+    },
+    {
+      "name": "Whiteboard",
+      "url": "/figma/whiteboard/",
+      "description": "Infinite canvas"
+    }
+  ]
+}

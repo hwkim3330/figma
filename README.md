@@ -167,6 +167,17 @@ figma/
 
 ---
 
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **PWA Support** | Install as app, works offline |
+| **Auto-Save** | Saves to LocalStorage every 30-60 seconds |
+| **Keyboard Shortcuts** | Press `?` to see all shortcuts |
+| **No Login** | Start designing immediately |
+
+---
+
 ## Architecture
 
 **Single-File Design**: Each tool is a standalone HTML file with embedded CSS and JavaScript.
@@ -178,6 +189,7 @@ figma/
 | No errors | No module import issues |
 | Fast loading | Single HTTP request |
 | Easy deploy | Copy and paste |
+| PWA ready | Installable, works offline |
 
 ---
 

@@ -986,6 +986,71 @@
 
     <div class="toast" id="toast"></div>
 
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcuts-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop" onclick="closeModal('shortcuts-modal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Keyboard Shortcuts</h2>
+                <button class="modal-close" onclick="closeModal('shortcuts-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcut-grid">
+                    <div class="shortcut-section">
+                        <h3>Tools</h3>
+                        <div class="shortcut-item"><kbd>V</kbd><span>Select</span></div>
+                        <div class="shortcut-item"><kbd>R</kbd><span>Rectangle</span></div>
+                        <div class="shortcut-item"><kbd>C</kbd><span>Circle</span></div>
+                        <div class="shortcut-item"><kbd>T</kbd><span>Triangle</span></div>
+                        <div class="shortcut-item"><kbd>L</kbd><span>Line</span></div>
+                        <div class="shortcut-item"><kbd>X</kbd><span>Text</span></div>
+                        <div class="shortcut-item"><kbd>S</kbd><span>Star</span></div>
+                        <div class="shortcut-item"><kbd>H</kbd><span>Hexagon</span></div>
+                        <div class="shortcut-item"><kbd>A</kbd><span>Arrow</span></div>
+                        <div class="shortcut-item"><kbd>P</kbd><span>Pen Tool</span></div>
+                        <div class="shortcut-item"><kbd>B</kbd><span>Pencil</span></div>
+                    </div>
+                    <div class="shortcut-section">
+                        <h3>Edit</h3>
+                        <div class="shortcut-item"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl+Y</kbd><span>Redo</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl+C</kbd><span>Copy</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl+V</kbd><span>Paste</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl+D</kbd><span>Duplicate</span></div>
+                        <div class="shortcut-item"><kbd>Del</kbd><span>Delete</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl+A</kbd><span>Select All</span></div>
+                    </div>
+                    <div class="shortcut-section">
+                        <h3>View</h3>
+                        <div class="shortcut-item"><kbd>G</kbd><span>Toggle Grid</span></div>
+                        <div class="shortcut-item"><kbd>+</kbd><span>Zoom In</span></div>
+                        <div class="shortcut-item"><kbd>-</kbd><span>Zoom Out</span></div>
+                        <div class="shortcut-item"><kbd>0</kbd><span>Reset Zoom</span></div>
+                        <div class="shortcut-item"><kbd>?</kbd><span>Show Shortcuts</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl+S</kbd><span>Save</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-backdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); }
+        .modal-content { position: relative; background: var(--surface); border-radius: 16px; max-width: 600px; width: 90%; max-height: 80vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { font-size: 18px; font-weight: 600; }
+        .modal-close { width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 8px; font-size: 24px; cursor: pointer; color: var(--text-dim); }
+        .modal-close:hover { background: var(--border); color: var(--text); }
+        .modal-body { padding: 24px; }
+        .shortcut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .shortcut-section h3 { font-size: 12px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; letter-spacing: 1px; }
+        .shortcut-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+        .shortcut-item kbd { background: var(--surface-2); padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 12px; color: var(--accent); border: 1px solid var(--border); }
+        .shortcut-item span { color: var(--text-dim); font-size: 13px; }
+        @media (max-width: 600px) { .shortcut-grid { grid-template-columns: 1fr; } }
+    </style>
+
     <script>
         // ============ Shape Class ============
         class Shape {
@@ -1328,8 +1393,26 @@
             window.addEventListener('resize', resizeCanvas);
             setupEventListeners();
             setupCollaboration();
+            loadFromLocalStorage(); // Load saved session
             render();
             saveHistory();
+
+            // Auto-save every 30 seconds
+            setInterval(() => {
+                if (state.shapes.length > 0) {
+                    localStorage.setItem('designflow-pro-autosave', JSON.stringify({
+                        shapes: state.shapes.map(s => ({
+                            type: s.type, x: s.x, y: s.y, width: s.width, height: s.height,
+                            fillColor: s.fillColor, strokeColor: s.strokeColor, strokeWidth: s.strokeWidth,
+                            opacity: s.opacity, cornerRadius: s.cornerRadius, rotation: s.rotation,
+                            text: s.text, fontSize: s.fontSize, name: s.name,
+                            useGradient: s.useGradient, gradientColors: s.gradientColors, gradientAngle: s.gradientAngle,
+                            shadow: s.shadow, blur: s.blur, points: s.points
+                        })),
+                        zoom: state.zoom, showGrid: state.showGrid
+                    }));
+                }
+            }, 30000);
         }
 
         function resizeCanvas() {
@@ -1704,6 +1787,59 @@
 
             if (e.key === '=' || e.key === '+') zoom(0.1);
             if (e.key === '-') zoom(-0.1);
+            if (e.key === '0') { state.zoom = 1; zoomDisplay.textContent = '100%'; render(); }
+            if (e.key === '?') openModal('shortcuts-modal');
+
+            // Ctrl+S: Save
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveToLocalStorage();
+            }
+        }
+
+        // Modal functions
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        // LocalStorage save/load
+        function saveToLocalStorage() {
+            const data = {
+                shapes: state.shapes.map(s => ({
+                    type: s.type, x: s.x, y: s.y, width: s.width, height: s.height,
+                    fillColor: s.fillColor, strokeColor: s.strokeColor, strokeWidth: s.strokeWidth,
+                    opacity: s.opacity, cornerRadius: s.cornerRadius, rotation: s.rotation,
+                    text: s.text, fontSize: s.fontSize, name: s.name,
+                    useGradient: s.useGradient, gradientColors: s.gradientColors, gradientAngle: s.gradientAngle,
+                    shadow: s.shadow, blur: s.blur, points: s.points
+                })),
+                zoom: state.zoom,
+                showGrid: state.showGrid
+            };
+            localStorage.setItem('designflow-pro-save', JSON.stringify(data));
+            showToast('Saved!');
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('designflow-pro-save');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    state.shapes = data.shapes.map(s => new Shape(s.type, s.x, s.y, s));
+                    state.zoom = data.zoom || 1;
+                    state.showGrid = data.showGrid ?? true;
+                    zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
+                    updateLayers();
+                    render();
+                    showToast('Loaded previous session');
+                } catch (e) {
+                    console.error('Load error:', e);
+                }
+            }
         }
 
         function handleContextAction(action) {

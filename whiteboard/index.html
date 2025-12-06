@@ -1099,9 +1099,100 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'TEXTAREA') return;
+
+            const shortcuts = {
+                'p': 'pen', 'h': 'highlighter', 'e': 'eraser', 'v': 'select',
+                't': 'text', 's': 'sticky', 'r': 'rectangle', 'c': 'circle',
+                'a': 'arrow', 'l': 'line'
+            };
+
+            if (!e.ctrlKey && !e.metaKey && shortcuts[e.key.toLowerCase()]) {
+                setTool(shortcuts[e.key.toLowerCase()]);
+            }
+
+            if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+                openHelpModal();
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo();
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveToLocalStorage();
+            }
+
+            if (e.key === '=' || e.key === '+') zoomIn();
+            if (e.key === '-') zoomOut();
+        });
+
+        // Save/Load
+        function saveToLocalStorage() {
+            const data = { paths, stickyNotes: getStickyNotesData(), zoom: state.zoom, panX: state.panX, panY: state.panY };
+            localStorage.setItem('designflow-whiteboard', JSON.stringify(data));
+            showToast('Saved!');
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('designflow-whiteboard');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.paths) paths.push(...data.paths);
+                    if (data.zoom) state.zoom = data.zoom;
+                    if (data.panX) state.panX = data.panX;
+                    if (data.panY) state.panY = data.panY;
+                    render();
+                } catch (e) {}
+            }
+        }
+
+        function getStickyNotesData() {
+            return Array.from(document.querySelectorAll('.sticky-note')).map(note => ({
+                x: note.style.left, y: note.style.top, color: note.className.split(' ')[1],
+                text: note.querySelector('textarea')?.value || ''
+            }));
+        }
+
+        // Help Modal
+        function openHelpModal() {
+            const modal = document.createElement('div');
+            modal.id = 'help-modal';
+            modal.innerHTML = `
+                <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;">
+                    <div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:90%;">
+                        <h2 style="margin-bottom:16px;font-size:18px;">Keyboard Shortcuts</h2>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">P</kbd> Pen</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">H</kbd> Highlighter</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">E</kbd> Eraser</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">V</kbd> Select</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">T</kbd> Text</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">S</kbd> Sticky</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">R</kbd> Rectangle</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">C</kbd> Circle</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">Ctrl+Z</kbd> Undo</div>
+                            <div><kbd style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">Ctrl+S</kbd> Save</div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;width:100%;padding:10px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
         // Initialize
         init();
+        loadFromLocalStorage();
         saveHistory();
+
+        // Auto-save
+        setInterval(() => { if (paths.length > 0) saveToLocalStorage(); }, 60000);
     </script>
 </body>
 </html>
