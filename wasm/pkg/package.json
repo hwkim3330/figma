@@ -1,0 +1,19 @@
+{
+  "name": "designflow-wasm",
+  "type": "module",
+  "collaborators": [
+    "DesignFlow"
+  ],
+  "description": "High-performance canvas operations for DesignFlow",
+  "version": "1.0.0",
+  "files": [
+    "designflow_wasm_bg.wasm",
+    "designflow_wasm.js",
+    "designflow_wasm.d.ts"
+  ],
+  "main": "designflow_wasm.js",
+  "types": "designflow_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

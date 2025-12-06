@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Performance - DesignFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f0f0f;
+            --surface: #1a1a1a;
+            --surface-2: #252525;
+            --border: #333333;
+            --text: #ffffff;
+            --text-dim: #888888;
+            --accent: #7c3aed;
+            --accent-2: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --rust: #dea584;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover { background: var(--surface-2); color: var(--text); }
+
+        .logo {
+            font-weight: 700;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .wasm-badge {
+            background: linear-gradient(135deg, var(--rust), #b7410e);
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-loading { background: var(--surface-2); color: var(--text-dim); }
+        .status-ready { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .status-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .js { color: #f7df1e; }
+        .card-title .rust { color: var(--rust); }
+
+        .canvas-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 300px;
+            background: var(--surface-2);
+            border-radius: 12px;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: white;
+        }
+
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4); }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover { background: var(--border); }
+
+        .btn-rust {
+            background: linear-gradient(135deg, var(--rust), #b7410e);
+            color: white;
+        }
+
+        .btn-js {
+            background: #f7df1e;
+            color: #000;
+        }
+
+        .results {
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-item:last-child { border-bottom: none; }
+
+        .result-label {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .result-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .result-value.fast { color: var(--success); }
+        .result-value.slow { color: var(--warning); }
+
+        .benchmark-section {
+            margin-top: 30px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .benchmark-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .benchmark-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .benchmark-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .benchmark-bar {
+            height: 40px;
+            background: var(--surface-2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            display: flex;
+        }
+
+        .bar-js {
+            background: linear-gradient(90deg, #f7df1e, #c9b608);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: 600;
+            font-size: 12px;
+            transition: width 0.5s ease;
+        }
+
+        .bar-wasm {
+            background: linear-gradient(90deg, var(--rust), #b7410e);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            transition: width 0.5s ease;
+        }
+
+        .benchmark-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .benchmark-stats span { color: var(--text-dim); }
+        .benchmark-stats strong { color: var(--text); }
+
+        .speedup {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .demo-section {
+            margin-top: 40px;
+        }
+
+        .demo-canvas-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .demo-canvas-wrapper {
+            flex: 1;
+        }
+
+        .demo-canvas-wrapper h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-canvas {
+            width: 100%;
+            height: 400px;
+            border-radius: 12px;
+        }
+
+        .slider-group {
+            margin-top: 16px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--surface-2);
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--surface-2);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .feature-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(124, 58, 237, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 800px) {
+            .grid { grid-template-columns: 1fr; }
+            .demo-canvas-container { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <a href="../" class="back-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Home
+                </a>
+                <div class="logo">
+                    DesignFlow
+                    <span class="wasm-badge">WASM</span>
+                </div>
+            </div>
+            <div id="status" class="status-badge status-loading">Loading WASM...</div>
+        </div>
+
+        <!-- Feature Overview -->
+        <div class="card" style="margin-bottom: 30px;">
+            <h2 class="card-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+                WASM Optimization Features
+            </h2>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">🖼️</div>
+                    <span>Image Blur (Box Blur)</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <span>Drop Shadow Generation</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🪣</div>
+                    <span>Flood Fill Algorithm</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✏️</div>
+                    <span>Path Smoothing (Catmull-Rom)</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎚️</div>
+                    <span>Color Adjustment</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📐</div>
+                    <span>Hit Testing (Batch)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benchmark Comparison -->
+        <div class="benchmark-section">
+            <h2 class="section-title">Performance Comparison</h2>
+            <div class="benchmark-grid" id="benchmarks"></div>
+        </div>
+
+        <!-- Live Demo -->
+        <div class="demo-section">
+            <h2 class="section-title">Live Demo: Image Blur</h2>
+            <div class="card">
+                <div class="demo-canvas-container">
+                    <div class="demo-canvas-wrapper">
+                        <h3>
+                            <span style="color: #f7df1e;">●</span> JavaScript
+                            <span id="js-time" style="margin-left: auto; font-weight: normal; color: var(--text-dim); font-size: 14px;"></span>
+                        </h3>
+                        <canvas id="js-canvas" class="demo-canvas"></canvas>
+                    </div>
+                    <div class="demo-canvas-wrapper">
+                        <h3>
+                            <span style="color: var(--rust);">●</span> WASM (Rust)
+                            <span id="wasm-time" style="margin-left: auto; font-weight: normal; color: var(--text-dim); font-size: 14px;"></span>
+                        </h3>
+                        <canvas id="wasm-canvas" class="demo-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Blur Radius</span>
+                        <span id="blur-value">10px</span>
+                    </div>
+                    <input type="range" id="blur-slider" min="1" max="30" value="10">
+                </div>
+                <div style="margin-top: 16px; display: flex; gap: 12px;">
+                    <button class="btn-primary" onclick="runBlurDemo()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        Run Comparison
+                    </button>
+                    <button class="btn-secondary" onclick="loadNewImage()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 11-6.22-8.56"/>
+                        </svg>
+                        New Image
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, * as wasm from './pkg/designflow_wasm.js';
+
+        let wasmReady = false;
+        let wasmModule = null;
+
+        // Initialize WASM
+        async function initWasm() {
+            try {
+                await init();
+                wasmModule = wasm;
+                wasmReady = true;
+                document.getElementById('status').className = 'status-badge status-ready';
+                document.getElementById('status').textContent = 'WASM Ready';
+                console.log('WASM initialized successfully');
+                runBenchmarks();
+                loadNewImage();
+            } catch (error) {
+                console.error('WASM init error:', error);
+                document.getElementById('status').className = 'status-badge status-error';
+                document.getElementById('status').textContent = 'WASM Error';
+            }
+        }
+
+        // JavaScript implementations for comparison
+        function jsBlur(data, width, height, radius) {
+            const len = data.length;
+            const output = new Uint8ClampedArray(len);
+            const temp = new Uint8ClampedArray(len);
+
+            // Horizontal pass
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let r = 0, g = 0, b = 0, a = 0, count = 0;
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const nx = x + dx;
+                        if (nx >= 0 && nx < width) {
+                            const idx = (y * width + nx) * 4;
+                            r += data[idx];
+                            g += data[idx + 1];
+                            b += data[idx + 2];
+                            a += data[idx + 3];
+                            count++;
+                        }
+                    }
+                    const idx = (y * width + x) * 4;
+                    temp[idx] = r / count;
+                    temp[idx + 1] = g / count;
+                    temp[idx + 2] = b / count;
+                    temp[idx + 3] = a / count;
+                }
+            }
+
+            // Vertical pass
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let r = 0, g = 0, b = 0, a = 0, count = 0;
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        const ny = y + dy;
+                        if (ny >= 0 && ny < height) {
+                            const idx = (ny * width + x) * 4;
+                            r += temp[idx];
+                            g += temp[idx + 1];
+                            b += temp[idx + 2];
+                            a += temp[idx + 3];
+                            count++;
+                        }
+                    }
+                    const idx = (y * width + x) * 4;
+                    output[idx] = r / count;
+                    output[idx + 1] = g / count;
+                    output[idx + 2] = b / count;
+                    output[idx + 3] = a / count;
+                }
+            }
+
+            return output;
+        }
+
+        function jsFloodFill(data, width, height, startX, startY, fillColor, tolerance) {
+            const targetIdx = (startY * width + startX) * 4;
+            const targetR = data[targetIdx];
+            const targetG = data[targetIdx + 1];
+            const targetB = data[targetIdx + 2];
+            const targetA = data[targetIdx + 3];
+
+            const fr = (fillColor >> 24) & 0xFF;
+            const fg = (fillColor >> 16) & 0xFF;
+            const fb = (fillColor >> 8) & 0xFF;
+            const fa = fillColor & 0xFF;
+
+            const visited = new Set();
+            const stack = [[startX, startY]];
+
+            while (stack.length > 0) {
+                const [cx, cy] = stack.pop();
+                const key = cy * width + cx;
+                if (visited.has(key)) continue;
+
+                const idx = key * 4;
+                const dr = Math.abs(data[idx] - targetR);
+                const dg = Math.abs(data[idx + 1] - targetG);
+                const db = Math.abs(data[idx + 2] - targetB);
+                const da = Math.abs(data[idx + 3] - targetA);
+
+                if (dr > tolerance || dg > tolerance || db > tolerance || da > tolerance) continue;
+
+                visited.add(key);
+                data[idx] = fr;
+                data[idx + 1] = fg;
+                data[idx + 2] = fb;
+                data[idx + 3] = fa;
+
+                if (cx > 0) stack.push([cx - 1, cy]);
+                if (cx < width - 1) stack.push([cx + 1, cy]);
+                if (cy > 0) stack.push([cx, cy - 1]);
+                if (cy < height - 1) stack.push([cx, cy + 1]);
+            }
+        }
+
+        function jsAdjustColors(data, brightness, contrast, saturation) {
+            const contrastFactor = Math.pow(1 + contrast, 2);
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i] + brightness * 255;
+                let g = data[i + 1] + brightness * 255;
+                let b = data[i + 2] + brightness * 255;
+
+                r = (r - 128) * contrastFactor + 128;
+                g = (g - 128) * contrastFactor + 128;
+                b = (b - 128) * contrastFactor + 128;
+
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = gray + saturation * (r - gray);
+                g = gray + saturation * (g - gray);
+                b = gray + saturation * (b - gray);
+
+                data[i] = Math.max(0, Math.min(255, r));
+                data[i + 1] = Math.max(0, Math.min(255, g));
+                data[i + 2] = Math.max(0, Math.min(255, b));
+            }
+        }
+
+        // Benchmark runner
+        function runBenchmarks() {
+            if (!wasmReady) return;
+
+            const benchmarks = [
+                {
+                    name: 'Image Blur (512x512, r=10)',
+                    setup: () => {
+                        const data = new Uint8Array(512 * 512 * 4);
+                        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 255;
+                        return { data, width: 512, height: 512, radius: 10 };
+                    },
+                    js: (p) => jsBlur(p.data, p.width, p.height, p.radius),
+                    wasm: (p) => wasmModule.blur_image(p.data, p.width, p.height, p.radius)
+                },
+                {
+                    name: 'Color Adjustment (1024x1024)',
+                    setup: () => {
+                        const data = new Uint8Array(1024 * 1024 * 4);
+                        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 255;
+                        return { data };
+                    },
+                    js: (p) => {
+                        const copy = new Uint8Array(p.data);
+                        jsAdjustColors(copy, 0.1, 0.2, 1.5);
+                        return copy;
+                    },
+                    wasm: (p) => {
+                        const copy = new Uint8Array(p.data);
+                        wasmModule.adjust_colors(copy, 0.1, 0.2, 1.5);
+                        return copy;
+                    }
+                },
+                {
+                    name: 'Path Smoothing (1000 points)',
+                    setup: () => {
+                        const x = new Float64Array(1000);
+                        const y = new Float64Array(1000);
+                        for (let i = 0; i < 1000; i++) {
+                            x[i] = Math.random() * 500;
+                            y[i] = Math.random() * 500;
+                        }
+                        return { x, y };
+                    },
+                    js: (p) => {
+                        // Simple JS smoothing
+                        const result = [];
+                        for (let i = 0; i < p.x.length - 1; i++) {
+                            for (let t = 0; t < 10; t++) {
+                                const tt = t / 10;
+                                result.push(p.x[i] + (p.x[i + 1] - p.x[i]) * tt);
+                                result.push(p.y[i] + (p.y[i + 1] - p.y[i]) * tt);
+                            }
+                        }
+                        return result;
+                    },
+                    wasm: (p) => wasmModule.smooth_path(p.x, p.y, 1.0)
+                },
+                {
+                    name: 'Batch Hit Test (10000 shapes)',
+                    setup: () => {
+                        const shapes = new Float64Array(10000 * 6);
+                        for (let i = 0; i < 10000; i++) {
+                            const offset = i * 6;
+                            shapes[offset] = i % 2; // type
+                            shapes[offset + 1] = Math.random() * 1000; // x
+                            shapes[offset + 2] = Math.random() * 1000; // y
+                            shapes[offset + 3] = 50 + Math.random() * 100; // w
+                            shapes[offset + 4] = 50 + Math.random() * 100; // h
+                            shapes[offset + 5] = Math.random() * Math.PI * 2; // rotation
+                        }
+                        return { shapes, px: 500, py: 500 };
+                    },
+                    js: (p) => {
+                        for (let i = 9999; i >= 0; i--) {
+                            const offset = i * 6;
+                            const x = p.shapes[offset + 1];
+                            const y = p.shapes[offset + 2];
+                            const w = p.shapes[offset + 3];
+                            const h = p.shapes[offset + 4];
+                            if (p.px >= x && p.px <= x + w && p.py >= y && p.py <= y + h) {
+                                return i;
+                            }
+                        }
+                        return -1;
+                    },
+                    wasm: (p) => wasmModule.batch_hit_test(p.px, p.py, p.shapes, 10000)
+                }
+            ];
+
+            const container = document.getElementById('benchmarks');
+            container.innerHTML = '';
+
+            benchmarks.forEach(bench => {
+                const params = bench.setup();
+
+                // Run JS
+                const jsStart = performance.now();
+                for (let i = 0; i < 5; i++) bench.js(params);
+                const jsTime = (performance.now() - jsStart) / 5;
+
+                // Run WASM
+                const wasmStart = performance.now();
+                for (let i = 0; i < 5; i++) bench.wasm(params);
+                const wasmTime = (performance.now() - wasmStart) / 5;
+
+                const speedup = jsTime / wasmTime;
+                const jsPercent = Math.min(100, (jsTime / (jsTime + wasmTime)) * 100);
+                const wasmPercent = 100 - jsPercent;
+
+                const card = document.createElement('div');
+                card.className = 'benchmark-card';
+                card.innerHTML = `
+                    <div class="benchmark-name">${bench.name}</div>
+                    <div class="benchmark-bar">
+                        <div class="bar-js" style="width: ${jsPercent}%">JS</div>
+                        <div class="bar-wasm" style="width: ${wasmPercent}%">WASM</div>
+                    </div>
+                    <div class="benchmark-stats">
+                        <span>JS: <strong>${jsTime.toFixed(2)}ms</strong></span>
+                        <span class="speedup">${speedup.toFixed(1)}x faster</span>
+                        <span>WASM: <strong>${wasmTime.toFixed(2)}ms</strong></span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Demo image
+        let demoImageData = null;
+        let demoWidth = 0;
+        let demoHeight = 0;
+
+        window.loadNewImage = function() {
+            const jsCanvas = document.getElementById('js-canvas');
+            const wasmCanvas = document.getElementById('wasm-canvas');
+            const jsCtx = jsCanvas.getContext('2d');
+            const wasmCtx = wasmCanvas.getContext('2d');
+
+            jsCanvas.width = jsCanvas.offsetWidth;
+            jsCanvas.height = jsCanvas.offsetHeight;
+            wasmCanvas.width = wasmCanvas.offsetWidth;
+            wasmCanvas.height = wasmCanvas.offsetHeight;
+
+            demoWidth = jsCanvas.width;
+            demoHeight = jsCanvas.height;
+
+            // Generate colorful pattern
+            const imageData = jsCtx.createImageData(demoWidth, demoHeight);
+            const data = imageData.data;
+
+            for (let y = 0; y < demoHeight; y++) {
+                for (let x = 0; x < demoWidth; x++) {
+                    const idx = (y * demoWidth + x) * 4;
+
+                    // Create colorful gradient pattern
+                    const hue = (x / demoWidth + y / demoHeight) * 180;
+                    const saturation = 80 + Math.sin(x * 0.05) * 20;
+                    const lightness = 50 + Math.cos(y * 0.03) * 20;
+
+                    // HSL to RGB
+                    const c = (1 - Math.abs(2 * lightness / 100 - 1)) * saturation / 100;
+                    const h = hue / 60;
+                    const x2 = c * (1 - Math.abs(h % 2 - 1));
+                    const m = lightness / 100 - c / 2;
+
+                    let r, g, b;
+                    if (h < 1) { r = c; g = x2; b = 0; }
+                    else if (h < 2) { r = x2; g = c; b = 0; }
+                    else if (h < 3) { r = 0; g = c; b = x2; }
+                    else if (h < 4) { r = 0; g = x2; b = c; }
+                    else if (h < 5) { r = x2; g = 0; b = c; }
+                    else { r = c; g = 0; b = x2; }
+
+                    // Add some shapes
+                    const cx = demoWidth / 2;
+                    const cy = demoHeight / 2;
+                    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+
+                    if (dist < 100) {
+                        r = 0.9; g = 0.3; b = 0.7;
+                    } else if (dist > 150 && dist < 180) {
+                        r = 0.2; g = 0.8; b = 0.4;
+                    }
+
+                    data[idx] = (r + m) * 255;
+                    data[idx + 1] = (g + m) * 255;
+                    data[idx + 2] = (b + m) * 255;
+                    data[idx + 3] = 255;
+                }
+            }
+
+            demoImageData = new Uint8Array(data);
+            jsCtx.putImageData(imageData, 0, 0);
+            wasmCtx.putImageData(imageData, 0, 0);
+
+            document.getElementById('js-time').textContent = '';
+            document.getElementById('wasm-time').textContent = '';
+        };
+
+        window.runBlurDemo = function() {
+            if (!wasmReady || !demoImageData) return;
+
+            const radius = parseInt(document.getElementById('blur-slider').value);
+            const jsCanvas = document.getElementById('js-canvas');
+            const wasmCanvas = document.getElementById('wasm-canvas');
+            const jsCtx = jsCanvas.getContext('2d');
+            const wasmCtx = wasmCanvas.getContext('2d');
+
+            // JS Blur
+            const jsStart = performance.now();
+            const jsResult = jsBlur(demoImageData, demoWidth, demoHeight, radius);
+            const jsTime = performance.now() - jsStart;
+
+            const jsImageData = new ImageData(new Uint8ClampedArray(jsResult), demoWidth, demoHeight);
+            jsCtx.putImageData(jsImageData, 0, 0);
+            document.getElementById('js-time').textContent = `${jsTime.toFixed(2)}ms`;
+
+            // WASM Blur
+            const wasmStart = performance.now();
+            const wasmResult = wasmModule.blur_image(demoImageData, demoWidth, demoHeight, radius);
+            const wasmTime = performance.now() - wasmStart;
+
+            const wasmImageData = new ImageData(new Uint8ClampedArray(wasmResult), demoWidth, demoHeight);
+            wasmCtx.putImageData(wasmImageData, 0, 0);
+            document.getElementById('wasm-time').textContent = `${wasmTime.toFixed(2)}ms (${(jsTime / wasmTime).toFixed(1)}x faster)`;
+        };
+
+        // Slider update
+        document.getElementById('blur-slider').addEventListener('input', (e) => {
+            document.getElementById('blur-value').textContent = e.target.value + 'px';
+        });
+
+        // Initialize
+        initWasm();
+    </script>
+</body>
+</html>

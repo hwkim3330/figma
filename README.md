@@ -14,6 +14,7 @@
 | **Pro Designer** | Advanced design with effects & collaboration | [pro/](pro/) |
 | **Diagram Editor** | Mermaid-powered diagram creation | [mermaid/](mermaid/) |
 | **Whiteboard** | Infinite canvas for freehand drawing | [whiteboard/](whiteboard/) |
+| **WASM Performance** | High-performance canvas ops with Rust/WebAssembly | [wasm/](wasm/) |
 
 ---
 
@@ -119,6 +120,30 @@ Infinite canvas for freehand drawing and brainstorming.
 
 ---
 
+## WASM Performance
+
+High-performance canvas operations powered by Rust and WebAssembly.
+
+**Optimized Operations:**
+- Image Blur (Box Blur algorithm)
+- Drop Shadow Generation
+- Flood Fill Algorithm
+- Path Smoothing (Catmull-Rom spline)
+- Color Adjustment (brightness, contrast, saturation)
+- Batch Hit Testing
+
+**Performance:**
+- 2-5x faster than JavaScript for most operations
+- Live benchmark comparison included
+- ~35KB WASM binary (optimized with wasm-opt)
+
+**Tech:**
+- Rust + wasm-bindgen
+- wasm-pack build toolchain
+- Zero runtime dependencies
+
+---
+
 ## Project Structure
 
 ```
@@ -132,6 +157,11 @@ figma/
 │   └── index.html      # Diagram Editor
 ├── whiteboard/
 │   └── index.html      # Whiteboard
+├── wasm/
+│   ├── index.html      # WASM demo & benchmarks
+│   ├── src/lib.rs      # Rust source code
+│   ├── Cargo.toml      # Rust dependencies
+│   └── pkg/            # Compiled WASM output
 └── README.md
 ```
 
@@ -159,6 +189,7 @@ figma/
 | Pro Designer | Vanilla JS, Canvas API, PeerJS |
 | Diagram Editor | Vanilla JS, Mermaid.js |
 | Whiteboard | Vanilla JS, Canvas API, Touch API |
+| WASM Performance | Rust, wasm-bindgen, WebAssembly |
 
 ---
 
