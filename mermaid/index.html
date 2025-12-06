@@ -1161,8 +1161,74 @@ flowchart TD
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === '?') openHelpModal();
+            if (e.key === '=' || e.key === '+') zoom(0.1);
+            if (e.key === '-') zoom(-0.1);
+            if (e.key === '0') { state.zoom = 1; updateZoom(); }
+            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 's') { e.preventDefault(); saveToLocalStorage(); }
+                if (e.key === 'Enter') { e.preventDefault(); renderDiagram(); }
+            }
+        });
+
+        // Save/Load
+        function saveToLocalStorage() {
+            const data = { code: codeEditor.value, theme: state.theme, zoom: state.zoom };
+            localStorage.setItem('designflow-mermaid', JSON.stringify(data));
+            showToast('Saved!');
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('designflow-mermaid');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.code) codeEditor.value = data.code;
+                    if (data.theme) {
+                        state.theme = data.theme;
+                        document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === data.theme));
+                    }
+                    if (data.zoom) state.zoom = data.zoom;
+                    renderDiagram();
+                } catch (e) {}
+            }
+        }
+
+        function openHelpModal() {
+            if (document.getElementById('help-modal')) return;
+            const modal = document.createElement('div');
+            modal.id = 'help-modal';
+            modal.innerHTML = `
+                <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+                    <div style="background:#1e293b;border-radius:16px;padding:24px;max-width:450px;width:90%;color:white;">
+                        <h2 style="margin-bottom:20px;font-size:18px;">Keyboard Shortcuts</h2>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+                            <div><kbd style="background:#334155;padding:4px 10px;border-radius:4px;margin-right:8px;">Ctrl+S</kbd>Save</div>
+                            <div><kbd style="background:#334155;padding:4px 10px;border-radius:4px;margin-right:8px;">Ctrl+Enter</kbd>Render</div>
+                            <div><kbd style="background:#334155;padding:4px 10px;border-radius:4px;margin-right:8px;">F</kbd>Fullscreen</div>
+                            <div><kbd style="background:#334155;padding:4px 10px;border-radius:4px;margin-right:8px;">+/-</kbd>Zoom</div>
+                            <div><kbd style="background:#334155;padding:4px 10px;border-radius:4px;margin-right:8px;">0</kbd>Reset Zoom</div>
+                            <div><kbd style="background:#334155;padding:4px 10px;border-radius:4px;margin-right:8px;">?</kbd>Help</div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="margin-top:24px;width:100%;padding:12px;background:#6366f1;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:500;">Close</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
         // Initialize
         init();
+        loadFromLocalStorage();
+
+        // Auto-save every 30 seconds
+        setInterval(() => { if (codeEditor.value.trim()) saveToLocalStorage(); }, 30000);
     </script>
 </body>
 </html>

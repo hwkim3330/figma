@@ -1392,9 +1392,95 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            if (!e.ctrlKey && !e.metaKey) {
+                const shortcuts = { v: 'select', r: 'rectangle', c: 'circle', t: 'triangle', l: 'line', x: 'text' };
+                if (shortcuts[e.key.toLowerCase()]) setTool(shortcuts[e.key.toLowerCase()]);
+                if (e.key === 'g') toggleGrid();
+                if (e.key === '?') openHelpModal();
+            }
+
+            if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+            if (e.key === '=' || e.key === '+') zoom(0.1);
+            if (e.key === '-') zoom(-0.1);
+            if (e.key === '0') { state.zoom = 1; zoomDisplay.textContent = '100%'; render(); }
+
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') { e.preventDefault(); undo(); }
+                if (e.key === 'y') { e.preventDefault(); redo(); }
+                if (e.key === 's') { e.preventDefault(); saveToLocalStorage(); }
+                if (e.key === 'd') { e.preventDefault(); duplicateSelected(); }
+            }
+        });
+
+        // Save/Load
+        function saveToLocalStorage() {
+            const data = {
+                shapes: state.shapes.map(s => ({
+                    type: s.type, x: s.x, y: s.y, width: s.width, height: s.height,
+                    fillColor: s.fillColor, strokeColor: s.strokeColor, strokeWidth: s.strokeWidth,
+                    opacity: s.opacity, rotation: s.rotation, text: s.text, fontSize: s.fontSize
+                })),
+                zoom: state.zoom, showGrid: state.showGrid
+            };
+            localStorage.setItem('designflow-basic', JSON.stringify(data));
+            showToast('Saved!');
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('designflow-basic');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    state.shapes = data.shapes.map(s => new Shape(s.type, s.x, s.y, s));
+                    state.zoom = data.zoom || 1;
+                    state.showGrid = data.showGrid ?? true;
+                    zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
+                    updateLayers();
+                    render();
+                } catch (e) {}
+            }
+        }
+
+        function openHelpModal() {
+            if (document.getElementById('help-modal')) return;
+            const modal = document.createElement('div');
+            modal.id = 'help-modal';
+            modal.innerHTML = `
+                <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+                    <div style="background:#2d2d2d;border-radius:16px;padding:24px;max-width:500px;width:90%;color:white;">
+                        <h2 style="margin-bottom:20px;font-size:18px;">Keyboard Shortcuts</h2>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">V</kbd>Select</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">R</kbd>Rectangle</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">C</kbd>Circle</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">T</kbd>Triangle</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">L</kbd>Line</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">X</kbd>Text</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">G</kbd>Grid</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">Del</kbd>Delete</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">Ctrl+Z</kbd>Undo</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">Ctrl+Y</kbd>Redo</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">Ctrl+S</kbd>Save</div>
+                            <div><kbd style="background:#404040;padding:4px 10px;border-radius:4px;margin-right:8px;">Ctrl+D</kbd>Duplicate</div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="margin-top:24px;width:100%;padding:12px;background:#0d99ff;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:500;">Close</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
         // Initialize
         init();
-        saveHistory(); // Initial state
+        loadFromLocalStorage();
+        saveHistory();
+
+        // Auto-save every 30 seconds
+        setInterval(() => { if (state.shapes.length > 0) saveToLocalStorage(); }, 30000);
     </script>
 </body>
 </html>
